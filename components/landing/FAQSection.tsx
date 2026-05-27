@@ -1,7 +1,25 @@
 "use client";
 
 import { useState } from "react";
-import { FAQ_ITEMS } from "@/types/drama";
+
+const FAQ_ITEMS = [
+  {
+    q: "Qu'est-ce qu'AdCreative ?",
+    a: "Un outil pour créer des publicités dropshipping en format vertical 9:16 : script IA, visuels cartoon avec ton produit, puis vidéos animées prêtes pour TikTok et Meta.",
+  },
+  {
+    q: "Quelles IA sont utilisées ?",
+    a: "GPT-4o pour le script, Gemini pour les images, Grok Aurora pour la vidéo, et Gemini TTS pour la voix off en français.",
+  },
+  {
+    q: "Ai-je besoin de compétences en montage ?",
+    a: "Non pour la génération. Tu télécharges les scènes et tu peux les assembler sur CapCut ou ton éditeur préféré en quelques minutes.",
+  },
+  {
+    q: "Combien de crédits consomme une pub ?",
+    a: "Chaque scène animée consomme des crédits selon ton plan. Le forfait gratuit permet de tester le flux complet.",
+  },
+];
 
 export function FAQSection() {
   const [open, setOpen] = useState<number | null>(null);

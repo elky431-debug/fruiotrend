@@ -4,32 +4,25 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const NAV = [
-  { href: "/dashboard", label: "Mes vidéos", icon: "▦" },
-  { href: "/generate", label: "Créer", icon: "+", accent: true },
-  { href: "/credits", label: "Plans", icon: "◈" },
+  { href: "/dashboard", label: "Mes pubs" },
+  { href: "/create", label: "+ Créer", accent: true },
+  { href: "/plans", label: "Plans" },
 ];
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const path = usePathname();
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        minHeight: "100vh",
-        background: "#050505",
-      }}
-    >
+    <div className="app-shell">
       <header
         style={{
           position: "sticky",
           top: 0,
           zIndex: 50,
-          borderBottom: "1px solid rgba(255,255,255,0.05)",
-          background: "rgba(5,5,5,0.85)",
-          backdropFilter: "blur(12px)",
-          WebkitBackdropFilter: "blur(12px)",
+          borderBottom: "1px solid var(--border)",
+          background: "rgba(10, 8, 6, 0.9)",
+          backdropFilter: "blur(20px)",
+          WebkitBackdropFilter: "blur(20px)",
         }}
       >
         <div
@@ -40,41 +33,29 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             alignItems: "center",
             justifyContent: "space-between",
             padding: "0 24px",
-            height: 56,
+            height: 60,
           }}
         >
           <Link
-            href="/dashboard"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              textDecoration: "none",
-            }}
+            href="/"
+            style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: 9 }}
           >
             <div
               style={{
-                width: 30,
-                height: 30,
+                width: 28,
+                height: 28,
                 borderRadius: 8,
-                background: "#C8FF00",
+                background: "var(--accent)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                fontSize: 16,
+                fontSize: 14,
               }}
             >
-              🍓
+              📢
             </div>
-            <span
-              style={{
-                fontWeight: 700,
-                fontSize: 15,
-                color: "#fff",
-                letterSpacing: "-0.02em",
-              }}
-            >
-              FruitDrama
+            <span style={{ fontWeight: 800, fontSize: 15, color: "var(--text)", letterSpacing: "-0.03em" }}>
+              Ad<span style={{ color: "var(--accent)" }}>Creative</span>
             </span>
           </Link>
 
@@ -88,31 +69,31 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                       display: "flex",
                       alignItems: "center",
                       gap: 7,
-                      padding: "6px 14px",
-                      borderRadius: 9,
+                      padding: "8px 16px",
+                      borderRadius: 12,
                       fontSize: 13,
-                      fontWeight: 500,
-                      transition: "all 0.12s",
+                      fontWeight: 600,
+                      transition: "all 0.15s",
                       background: item.accent
                         ? active
-                          ? "#C8FF00"
-                          : "rgba(200,255,0,0.08)"
+                          ? "linear-gradient(135deg, var(--accent), var(--accent-cherry))"
+                          : "rgba(227, 43, 69, 0.12)"
                         : active
-                          ? "rgba(255,255,255,0.06)"
+                          ? "var(--bg3)"
                           : "transparent",
                       color: item.accent
                         ? active
-                          ? "#000"
-                          : "#C8FF00"
-                        : active
                           ? "#fff"
-                          : "#666",
+                          : "var(--accent-soft)"
+                        : active
+                          ? "var(--text)"
+                          : "var(--text2)",
                       border: item.accent
-                        ? `1px solid ${active ? "transparent" : "rgba(200,255,0,0.2)"}`
+                        ? `1px solid ${active ? "transparent" : "rgba(227, 43, 69, 0.25)"}`
                         : "1px solid transparent",
+                      boxShadow: item.accent && active ? "0 4px 20px rgba(227, 43, 69, 0.35)" : "none",
                     }}
                   >
-                    <span style={{ fontSize: 14 }}>{item.icon}</span>
                     {item.label}
                   </div>
                 </Link>
@@ -126,13 +107,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 display: "flex",
                 alignItems: "center",
                 gap: 6,
-                background: "rgba(200,255,0,0.06)",
-                border: "1px solid rgba(200,255,0,0.15)",
-                borderRadius: 100,
-                padding: "5px 12px",
+                background: "rgba(245, 182, 67, 0.1)",
+                border: "1px solid rgba(245, 182, 67, 0.25)",
+                borderRadius: 99,
+                padding: "6px 14px",
                 fontSize: 12,
-                color: "#C8FF00",
-                fontWeight: 500,
+                color: "var(--accent-warm)",
+                fontWeight: 700,
               }}
             >
               <span
@@ -140,8 +121,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   width: 6,
                   height: 6,
                   borderRadius: "50%",
-                  background: "#C8FF00",
-                  display: "inline-block",
+                  background: "var(--accent-warm)",
+                  boxShadow: "0 0 8px var(--accent-warm)",
                 }}
               />
               12 crédits
@@ -149,15 +130,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             <Link
               href="/settings"
               style={{
-                width: 32,
-                height: 32,
+                width: 36,
+                height: 36,
                 borderRadius: "50%",
-                background: "rgba(255,255,255,0.08)",
-                border: "1px solid rgba(255,255,255,0.1)",
+                background: "var(--bg3)",
+                border: "1px solid var(--border)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                fontSize: 14,
+                fontSize: 15,
                 textDecoration: "none",
               }}
             >

@@ -2,29 +2,82 @@ import Link from "next/link";
 
 export function Navbar() {
   return (
-    <nav className="sticky top-0 z-50 border-b border-bg-card bg-bg-primary/95 backdrop-blur">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
-        <Link href="/" className="flex items-center gap-2 font-bold text-white">
-          <span className="text-xl">🍓</span>
-          <span>FruitDrama</span>
+    <nav
+      style={{
+        position: "sticky",
+        top: 0,
+        zIndex: 50,
+        borderBottom: "1px solid rgba(245, 182, 67, 0.12)",
+        background: "rgba(10, 8, 6, 0.92)",
+        backdropFilter: "blur(16px)",
+      }}
+    >
+      <div
+        style={{
+          maxWidth: "72rem",
+          margin: "0 auto",
+          padding: "0 1rem",
+          height: 60,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <Link
+          href="/"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            fontWeight: 700,
+            color: "#fff8f2",
+            textDecoration: "none",
+          }}
+        >
+          <span
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 8,
+              background: "linear-gradient(135deg, #e32b45, #f5b623)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 16,
+            }}
+          >
+            📢
+          </span>
+          <span>
+            Ad<span style={{ color: "#e32b45" }}>Creative</span>
+          </span>
         </Link>
 
-        <div className="hidden items-center gap-8 text-sm text-text-secondary md:flex">
-          <a href="#tarifs" className="transition hover:text-white">Tarifs</a>
-          <a href="#faq" className="transition hover:text-white">FAQ</a>
-          <a href="#" className="transition hover:text-white">Blog</a>
-          <a href="#" className="transition hover:text-white">Contact</a>
+        <div style={{ display: "flex", alignItems: "center", gap: 24, fontSize: 14 }}>
+          <a href="#tarifs" style={{ color: "#c4b5a8", textDecoration: "none" }}>
+            Tarifs
+          </a>
+          <a href="#faq" style={{ color: "#c4b5a8", textDecoration: "none" }}>
+            FAQ
+          </a>
         </div>
 
-        <div className="flex items-center gap-3">
-          <span className="hidden rounded-full border border-border-light px-3 py-1 text-xs text-text-secondary sm:inline">
-            FR
-          </span>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <Link
             href="/login"
-            className="rounded-full border border-white px-5 py-2 text-sm font-medium text-white transition hover:bg-bg-card"
+            style={{
+              padding: "8px 16px",
+              borderRadius: 99,
+              border: "1px solid rgba(227, 43, 69, 0.35)",
+              color: "#fff8f2",
+              fontSize: 13,
+              textDecoration: "none",
+            }}
           >
             Se connecter
+          </Link>
+          <Link href="/create" className="btn-primary" style={{ fontSize: 13, textDecoration: "none" }}>
+            Créer →
           </Link>
         </div>
       </div>

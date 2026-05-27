@@ -21,7 +21,7 @@ export function SocialProofSection() {
       <div className="mx-auto max-w-6xl px-4 text-center">
         <h2 className="text-3xl font-extrabold">
           Des centaines de comptes utilisent{" "}
-          <span className="text-accent">FruitDrama</span>
+          <span className="text-gradient">AdCreative</span>
         </h2>
         <p className="mt-4 text-text-secondary">
           Rejoins la communauté des créateurs qui ont arrêté de jongler entre 5 logiciels.
@@ -32,7 +32,7 @@ export function SocialProofSection() {
             <div key={acc.handle} className="card-base w-full max-w-sm p-6 text-left">
               <div className="flex items-center gap-3">
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-bg-hover text-xl">
-                  🍓
+                  📢
                 </div>
                 <div>
                   <p className="font-semibold text-white">{acc.name}</p>

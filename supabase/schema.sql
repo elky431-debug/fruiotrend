@@ -43,3 +43,55 @@ create policy "Users can read own generations" on generations
 
 create policy "Users can insert own generations" on generations
   for insert with check (auth.uid() = user_id);
+
+create table if not exists ads (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade,
+  title text not null,
+  hook text,
+  cta text,
+  product_name text,
+  template text,
+  script jsonb,
+  scenes jsonb,
+  final_video_url text,
+  final_video_path text,
+  status text default 'draft',
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+create index if not exists ads_user_id_idx on ads(user_id);
+create index if not exists ads_created_at_idx on ads(created_at desc);
+
+alter table ads enable row level security;
+
+drop policy if exists "users see own ads" on ads;
+create policy "users see own ads" on ads
+  for all using (auth.uid() = user_id);
+
+insert into storage.buckets (id, name, public) values
+  ('product-images', 'product-images', false),
+  ('ad-scenes', 'ad-scenes', false),
+  ('ad-videos', 'ad-videos', false),
+  ('ad-audio', 'ad-audio', false),
+  ('ad-finals', 'ad-finals', false)
+on conflict (id) do nothing;
+
+drop policy if exists "auth users upload product-images" on storage.objects;
+create policy "auth users upload product-images"
+  on storage.objects for insert
+  with check (bucket_id = 'product-images' and auth.role() = 'authenticated');
+
+drop policy if exists "auth users read own files" on storage.objects;
+create policy "auth users read own files"
+  on storage.objects for select
+  using (auth.uid()::text = (storage.foldername(name))[1]);
+
+drop policy if exists "auth users upload ad-assets" on storage.objects;
+create policy "auth users upload ad-assets"
+  on storage.objects for insert
+  with check (
+    bucket_id in ('ad-scenes', 'ad-videos', 'ad-audio', 'ad-finals')
+    and auth.role() = 'authenticated'
+  );

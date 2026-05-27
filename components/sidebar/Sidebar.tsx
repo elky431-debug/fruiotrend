@@ -5,9 +5,9 @@ import { usePathname } from "next/navigation";
 
 const NAV = [
   { href: "/", label: "Accueil", icon: "⌂", activeMatch: "__home__" },
-  { href: "/dashboard", label: "Mes vidéos", icon: "▦", activeMatch: "/dashboard" },
-  { href: "/generate", label: "Nouvelle vidéo", icon: "+", accent: true, activeMatch: "/generate" },
-  { href: "/credits", label: "Crédits & Plans", icon: "◎", activeMatch: "/credits" },
+  { href: "/dashboard", label: "Mes pubs", icon: "▦", activeMatch: "/dashboard" },
+  { href: "/create", label: "+ Créer", icon: "+", accent: true, activeMatch: "/create" },
+  { href: "/plans", label: "Plans", icon: "◎", activeMatch: "/plans" },
   { href: "/settings", label: "Paramètres", icon: "⚙", activeMatch: "/settings" },
 ];
 
@@ -21,8 +21,8 @@ export function Sidebar() {
           href="/"
           className="flex items-center gap-2 border-b border-bg-card px-4 py-5 transition hover:opacity-80"
         >
-          <span className="text-xl">🍓</span>
-          <span className="font-bold text-white">FruitDrama</span>
+          <span className="text-xl">📢</span>
+          <span className="font-bold text-white">AdCreative</span>
         </Link>
 
         <nav className="flex flex-1 flex-col gap-1 p-3">

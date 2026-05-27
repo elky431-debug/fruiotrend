@@ -1,12 +1,16 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"] });
+const jakarta = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+});
 
 export const metadata: Metadata = {
-  title: "FruitDrama — Crée des vidéos de Fruits IA",
-  description: "Générateur de vidéos fruits dramatiques pour TikTok, Reels et Shorts.",
+  title: "AdCreative — Pubs dropshipping IA",
+  description:
+    "Crée des publicités 9:16 pour TikTok et Meta : script GPT, visuels Gemini, vidéo Grok.",
 };
 
 export default function RootLayout({
@@ -14,12 +18,7 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="fr">
-      <body
-        className={inter.className}
-        style={{ background: "#050505", minHeight: "100vh" }}
-      >
-        {children}
-      </body>
+      <body className={jakarta.className}>{children}</body>
     </html>
   );
 }

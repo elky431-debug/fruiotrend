@@ -39,7 +39,7 @@ export default function CreditsPage() {
           Crédits & Plans
         </h1>
         <p style={{ color: "#555", fontSize: 14 }}>
-        Tu as <strong style={{ color: "#C8FF00" }}>3 crédits</strong> restants
+        Tu as <strong style={{ color: "var(--accent-warm)" }}>12 crédits</strong> restants
         </p>
       </div>
 

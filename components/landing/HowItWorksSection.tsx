@@ -1,55 +1,68 @@
+import Image from "next/image";
 import Link from "next/link";
 
 const STEPS = [
   {
     step: "ÉTAPE 1",
-    title: "Écris ton prompt / Idée",
-    desc: "Décris ton concept en quelques mots. L'IA génère automatiquement un script dramatique complet avec dialogues et rebondissements.",
-    emoji: "✍️",
+    title: "Upload ton produit",
+    desc: "Nom, description, audience et objectif pub. Ajoute des photos produit pour guider les visuels.",
+    image: "/landing/drama-cuisine.png",
+    alt: "Étape produit",
   },
   {
     step: "ÉTAPE 2",
-    title: "L'IA génère script & images",
-    desc: "Script et images sont générés automatiquement. Chaque scène est modifiable avant la génération de la vidéo si tu le souhaites.",
-    emoji: "🎬",
+    title: "Script & visuels IA",
+    desc: "GPT-4o rédige le script pub FR. Gemini génère personnage cartoon et scènes 9:16 avec ton produit.",
+    image: "/landing/drama-chantier.png",
+    alt: "Script et images",
   },
   {
     step: "ÉTAPE 3",
-    title: "Génère ta vidéo et poste-la",
-    desc: "Génère la vidéo en un clic et poste-la directement sur TikTok, Reels et Shorts. Format 9:16, audio intégré, prêt à publier.",
-    emoji: "📱",
+    title: "Animation Grok + voix IA",
+    desc: "Chaque scène devient une vidéo 10s avec voix off Gemini TTS. Télécharge et publie sur TikTok / Meta.",
+    image: "/landing/drama-rue.png",
+    alt: "Vidéos pub",
   },
 ];
 
 export function HowItWorksSection() {
   return (
-    <section className="bg-bg-subtle py-20">
-      <div className="mx-auto max-w-6xl px-4 text-center">
-        <h2 className="text-3xl font-extrabold lg:text-4xl">
-          Crée des vidéos IA{" "}
-          <span className="text-accent">pour toutes les niches</span>
+    <section className="landing-steps-section">
+      <div className="landing-steps-inner">
+        <h2 className="landing-h2">
+          Pipeline pub{" "}
+          <span className="text-gradient">dropshipping complet</span>
         </h2>
-        <p className="mx-auto mt-4 max-w-2xl text-text-secondary">
-          Crée des vidéos IA de qualité pour toutes les niches, prêtes à être postées sur
-          TikTok, Reels et Shorts.
+        <p className="landing-sub">
+          De la fiche produit à la pub verticale — script, visuels et vidéos en français.
         </p>
 
-        <div className="mt-14 grid gap-6 md:grid-cols-3">
+        <div className="landing-steps-grid">
           {STEPS.map((s) => (
-            <div key={s.step} className="card-base overflow-hidden text-left">
-              <div className="flex h-48 items-center justify-center bg-bg-hover text-6xl">
-                {s.emoji}
+            <article key={s.step} className="landing-step-card">
+              <div className="landing-step-image">
+                <Image
+                  src={s.image}
+                  alt={s.alt}
+                  width={360}
+                  height={640}
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                />
               </div>
-              <div className="p-6">
-                <p className="text-sm font-bold text-accent">{s.step}</p>
-                <h3 className="mt-2 text-xl font-bold text-white">{s.title}</h3>
-                <p className="mt-2 text-sm text-text-secondary">{s.desc}</p>
+              <div className="landing-step-body">
+                <p className="landing-step-label">{s.step}</p>
+                <h3 className="landing-step-title">{s.title}</h3>
+                <p className="landing-step-desc">{s.desc}</p>
               </div>
-            </div>
+            </article>
           ))}
         </div>
 
-        <Link href="/generate" className="btn-primary mt-12 inline-flex">
+        <Link
+          href="/create"
+          className="btn-primary"
+          style={{ marginTop: "2.5rem", display: "inline-flex", textDecoration: "none" }}
+        >
           Commencer maintenant →
         </Link>
       </div>

@@ -1,5 +1,7 @@
 export interface CharacterDef {
   id: string;
+  /** ID stable dans la bibliothèque (réutilisation entre vidéos) */
+  libraryId?: string;
   name: string;
   type: string;
   gender: "homme" | "femme";
