@@ -38,9 +38,7 @@ export default function Step1Product({ onNext, loading, initial }: Props) {
   const [template, setTemplate] = useState<AdTemplate>(
     initial?.template ?? "living_product"
   );
-  const [nScenes, setNScenes] = useState(
-    initial?.nScenes ?? 3
-  );
+  const [nScenes, setNScenes] = useState(initial?.nScenes ?? 1);
   const [duration, setDuration] = useState(initialDuration);
   const [images, setImages] = useState<string[]>(initial?.images ?? []);
   const [mimeTypes, setMimeTypes] = useState<string[]>(
@@ -61,7 +59,6 @@ export default function Step1Product({ onNext, loading, initial }: Props) {
 
   const selectTemplate = (id: AdTemplate) => {
     setTemplate(id);
-    setNScenes(getTemplateConfig(id).scenes);
   };
 
   const fileToBase64 = (file: File): Promise<string> =>
@@ -383,11 +380,7 @@ export default function Step1Product({ onNext, loading, initial }: Props) {
               <button
                 key={d.s}
                 type="button"
-                onClick={() => {
-                  setDuration(d.s);
-                  const auto = d.s <= 15 ? 1 : d.s <= 30 ? 2 : 3;
-                  setNScenes(auto);
-                }}
+                onClick={() => setDuration(d.s)}
                 style={{
                   flex: 1,
                   padding: "10px 8px",

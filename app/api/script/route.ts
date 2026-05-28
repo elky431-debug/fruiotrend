@@ -1,7 +1,53 @@
 import OpenAI from "openai";
 import { NextRequest, NextResponse } from "next/server";
-import { TEMPLATE_SYSTEM_PROMPTS, getTemplateConfig } from "@/lib/adTemplates";
+
+export const maxDuration = 60;
+import { getTemplateConfig } from "@/lib/adTemplates";
+import { inferBackground } from "@/lib/inferBackground";
 import type { AdTemplate, ProductInput } from "@/types/ad";
+
+const TEMPLATE_VOICEOVER_EXAMPLES: Record<string, string[]> = {
+  "Produit Vivant": [
+    "Je me réveille. Et je n'attends qu'une chose — toi.",
+    "Tu crois que tes muscles peuvent se passer de moi ?",
+    "Je suis petit. Mais je fais des grandes choses.",
+  ],
+  "Influenceur Cartoon": [
+    "Tiens-moi. Je vais te montrer pourquoi ils m'adorent.",
+    "Tu me regardes ? Bien. Écoute ce que je peux faire.",
+    "Sans moi, ta routine est incomplète. Vraiment.",
+  ],
+  "Avant / Après": [
+    "Avant moi, tu souffrais. Maintenant regarde-toi.",
+    "Il y a eu un avant. Et il y a moi.",
+    "La douleur, c'était avant. Je suis l'après.",
+  ],
+  "Démo Produit": [
+    "Regarde bien. Tu ne verras plus jamais la douleur pareil.",
+    "Trois réglages. Un résultat. Moi.",
+    "J'ai été conçu pour ça. Et je suis très bon.",
+  ],
+  Lifestyle: [
+    "Je t'accompagne. Le matin. Le soir. Partout.",
+    "Ta routine sans moi ? Elle me manque déjà.",
+    "Chaque muscle. Chaque soir. C'est ma promesse.",
+  ],
+  "Problème Absurde": [
+    "Sans moi ? Bonne chance avec ça.",
+    "Tu rigoles ? Moi, je règle le problème.",
+    "Ils ont tout essayé. Puis ils m'ont trouvé.",
+  ],
+  "Unboxing Premium": [
+    "Ouvre-moi. Tu vas comprendre.",
+    "Je suis là. Enfin. Pour toi.",
+    "Le moment que tu attendais ? C'est maintenant.",
+  ],
+  Témoignages: [
+    "Ils ne peuvent plus s'en passer. Moi non plus de toi.",
+    "Une fois que tu m'as essayé, tu comprends.",
+    "Je suis devenu indispensable. Comme prévu.",
+  ],
+};
 
 export async function POST(req: NextRequest) {
   try {
@@ -25,17 +71,21 @@ export async function POST(req: NextRequest) {
     const template = (product.template || "living_product") as AdTemplate;
     const templateMeta = getTemplateConfig(template);
     const nScenes = Math.min(Math.max(Number(product.nScenes) || 1, 1), 3);
-    const totalDuration = Math.max(Number(product.duration) || 15, 15);
-    const durationPerScene = Math.max(5, Math.round(totalDuration / nScenes));
-    const wordsPerScene = Math.max(12, Math.round(durationPerScene * 2.5));
-    const templateInstructions =
-      TEMPLATE_SYSTEM_PROMPTS[template] || TEMPLATE_SYSTEM_PROMPTS.influencer;
-    const structurePlan =
+    const totalDuration = [15, 30, 45].includes(Number(product.duration))
+      ? Number(product.duration)
+      : 30;
+    const secondsPerScene = Math.max(2, Math.floor(totalDuration / nScenes));
+    const wordsPerScene = Math.max(
+      3,
+      Math.floor(secondsPerScene * 2.3)
+    );
+
+    const narrativePlan =
       nScenes === 1
-        ? "- Scène 1 : ATTENTION + DÉSIR + ACTION — hook immédiat, bénéfice principal, CTA clair."
+        ? "SCÈNE UNIQUE : raconte le problème ET la solution dans la même scène (arc complet)."
         : nScenes === 2
-          ? "- Scène 1 : ATTENTION + INTÉRÊT — hook visuel, problème relatable, empathie.\n- Scène 2 : DÉSIR + ACTION — solution produit, bénéfices concrets, CTA."
-          : "- Scène 1 : ATTENTION — hook visuel + voiceover choc.\n- Scène 2 : INTÉRÊT — problème relatable, empathie.\n- Scène 3 : DÉSIR + ACTION — bénéfice concret + émotionnel du produit puis CTA.";
+          ? "SCÈNE 1 narrative_role=problem | SCÈNE 2 narrative_role=solution"
+          : "SCÈNE 1 narrative_role=problem | SCÈNE 2 narrative_role=discovery | SCÈNE 3 narrative_role=solution";
 
     let productVisualDescription = product.name;
     const client = new OpenAI({ apiKey });
@@ -81,96 +131,117 @@ Réponds en anglais pour les prompts image. Sois très spécifique sur les coule
     }
 
     const isLivingProduct = product.template === "living_product";
+    const templateLabel = templateMeta.name;
+    const voiceoverExamples =
+      TEMPLATE_VOICEOVER_EXAMPLES[templateLabel] ||
+      TEMPLATE_VOICEOVER_EXAMPLES["Produit Vivant"];
+    const examplesBlock = voiceoverExamples.map((e) => `"${e}"`).join("\n");
 
-    const systemPrompt = `Tu es le meilleur copywriter de publicité directe au monde.
-Tu écris des pubs vidéo TikTok/Reels qui VENDENT vraiment.
-Tu utilises la structure AIDA : Attention → Intérêt → Désir → Action.
+    const systemPrompt = `Tu es un expert en publicité vidéo virale pour dropshippers.
+Tu génères des scripts de pubs où LE PRODUIT parle à la 1ère personne.
+Le script doit raconter une VRAIE HISTOIRE en 3 temps : problème → tension → solution.
 
-PRODUIT : ${product.name}
-DESCRIPTION : ${product.description}
-CIBLE : ${product.targetAudience}
-OBJECTIF : ${product.adGoal}
-FORMAT PUB : ${templateInstructions}
-STYLE D'ACCROCHE : ${templateMeta.hook_style}
-GÉNÈRE EXACTEMENT ${nScenes} SCÈNES — ni plus ni moins.
-DURÉE TOTALE : ${totalDuration} secondes (${nScenes} scène${nScenes > 1 ? "s" : ""} × ~${durationPerScene}s chacune)
-VOICEOVER : ${wordsPerScene} mots par scène environ (rythme naturel de parole)
-Plus la durée est longue, plus le voiceover doit être développé et le storytelling riche.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+RÈGLE 1 — STRUCTURE NARRATIVE OBLIGATOIRE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SCÈNE 1 (problem) — LE PROBLÈME : douleur, frustration, situation difficile du spectateur AVANT le produit.
+SCÈNE 2 (discovery, si 2+ scènes) — LA TENSION : moment où tout bascule, curiosité, espoir.
+SCÈNE FINALE (solution) — LA TRANSFORMATION : le produit résout tout, vie meilleure, CTA émotionnel.
 
-DESCRIPTION VISUELLE DU PRODUIT :
-"${productVisualDescription}"
+${narrativePlan}
 
-RÈGLES DE COPYWRITING QUI VEND :
-${structurePlan}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+RÈGLE 2 — LE PRODUIT PARLE (1ÈRE PERSONNE)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ "Je suis là. Chaque soir. Pour toi."
+✅ "Tu souffres encore ? Laisse-moi m'en occuper."
+✅ "Avant moi, tu endurais. Maintenant, tu récupères."
+❌ JAMAIS "Ce produit va changer votre vie."
+❌ JAMAIS de narrateur externe
 
-VOICEOVER : environ ${wordsPerScene} mots par scène, naturel, persuasif, développé si nécessaire.
-SOUS-TITRES : 4 mots max. Phrase choc. Émotion forte.
+EXEMPLES (${templateLabel}) :
+${examplesBlock}
 
-JSON UNIQUEMENT (zéro markdown) :
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+RÈGLE 3 — DURÉE EXACTE : ${totalDuration} SECONDES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CHAQUE scène dure exactement ${secondsPerScene} secondes.
+Le voiceover de chaque scène doit faire EXACTEMENT ${wordsPerScene} mots (compte les mots).
+${wordsPerScene} mots ≈ ${secondsPerScene}s à 2,3 mots/seconde (débit français naturel).
+COMPTE les mots de chaque voiceover — cible ${wordsPerScene} ± 1 mot.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+RÈGLE 4 — DÉCOR LIÉ AU PRODUIT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+"background" EN ANGLAIS — décor d'usage réel, JAMAIS fond blanc/neutre.
+Produit : ${product.name} — ${product.description}
+Référence visuelle : "${productVisualDescription}"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PARAMÈTRES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Template : ${templateLabel} (${template})
+Cible : ${product.targetAudience}
+Objectif : ${product.adGoal}
+Durée totale : ${totalDuration}s (${nScenes} scène(s) × ${secondsPerScene}s)
+Mots par voiceover : ${wordsPerScene}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FORMAT JSON STRICT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 {
-  "title": "titre de la pub",
-  "hook": "LA phrase d'accroche qui arrête le scroll",
-  "cta": "call-to-action final irrésistible",
+  "title": "Titre accrocheur de la pub",
+  "hook": "Accroche 1ère personne (français)",
+  "cta": "CTA final 1ère personne (français)",
+  "totalDuration": ${totalDuration},
   "duration": "${totalDuration}s",
   "productVisualDescription": "${productVisualDescription}",
   "character": {
-    "name": "nom du personnage/produit vivant",
+    "name": "${isLivingProduct ? product.name : "Personnage"}",
     "type": "${isLivingProduct ? "le produit lui-même qui prend vie" : "personnage cartoon"}",
-    "description": "description précise",
-    "outfit": "apparence détaillée",
-    "personality": "enthousiaste, convaincant, chaleureux",
-    "gemini_character_prompt": "prompt character sheet"
+    "description": "personnalité Pixar",
+    "outfit": "n/a",
+    "personality": "direct, chaleureux",
+    "gemini_character_prompt": "Pixar 3D product with eyes only"
   },
   "scenes": [
     {
       "number": 1,
-      "title": "L'Accroche",
-      "aida_stage": "ATTENTION",
-      "visual_description": "description visuelle spectaculaire",
-      "character_action": "action précise du personnage",
-      "voiceover": "phrase(s) du voiceover — environ ${wordsPerScene} mots pour ~${durationPerScene} secondes d'audio",
-      "subtitle": "ACCROCHE 4 MOTS",
-      "hook": "élément accrocheur de la scène",
-      "productVisualDescription": "${productVisualDescription}",
-      "gemini_prompt": "Pixar/DreamWorks 3D animated commercial scene, VERTICAL 9:16 portrait. ${isLivingProduct ? `The product ${product.name} comes to life as an animated character: ${productVisualDescription}. The product has large expressive cartoon eyes integrated naturally, small arms and legs emerging from its body, keeping its exact original shape, colors and branding 100% intact. The product-character is animated, gesturing, expressive.` : `Animated cartoon character holding the product.`} PRODUCT VISUAL: ${productVisualDescription}. IMPORTANT: reproduce the product EXACTLY - same colors, same packaging, same logo, same proportions. [action de la scène]. [décor]. Ultra vibrant Pixar colors, cinematic commercial lighting, ultra detailed.",
-      "grok_video_prompt": "Pixar 3D commercial video, 9:16. ${isLivingProduct ? `The product ${product.name} (${productVisualDescription}) is an animated character with expressive eyes and small arms, keeping exact product appearance. It` : "The cartoon character"} [action précise mouvement par mouvement]. Smooth animation, commercial quality, dynamic camera movement."
+      "title": "Titre court",
+      "narrative_role": "problem|discovery|solution",
+      "background": "Décor EN ANGLAIS lié au produit et au rôle narratif",
+      "visual_description": "Scène EN ANGLAIS — produit Pixar avec yeux ET bouche expressive + décor",
+      "character_action": "Action du produit EN ANGLAIS (sans bras — bouche qui parle)",
+      "voiceover": "EXACTEMENT ${wordsPerScene} MOTS en français — 1ère personne, dit par le produit",
+      "voiceover_word_count": ${wordsPerScene},
+      "duration_seconds": ${secondsPerScene},
+      "mouth_expression": "big smile|smirk|open mouth speaking|surprised O|determined",
+      "emotion": "excited|dramatic|whisper|happy|intense|triumphant|empathy|mysterious",
+      "grok_video_prompt": "Prompt vidéo EN ANGLAIS — caméra + mouvement + bouche qui parle",
+      "subtitle": "MOT CHOC — max 3 mots MAJUSCULES"
     }
   ]
 }
 
-STRUCTURE OBLIGATOIRE pour ${nScenes} scènes :
-${structurePlan}
+${nScenes === 1 ? "⚠️ UNE SEULE SCÈNE — tableau scenes avec EXACTEMENT 1 objet (problème + solution)." : `⚠️ EXACTEMENT ${nScenes} SCÈNES.`}`;
 
-IMPORTANT :
-- EXACTEMENT ${nScenes} scènes
-- Chaque voiceover doit être une vraie phrase de copywriting qui vend
-- Chaque voiceover doit durer environ ${durationPerScene} secondes à l'oral
-- Le produit doit rester visuellement identique
-- gemini_prompt doit toujours rappeler la description visuelle exacte`;
+    const defaultRoles: Array<"problem" | "discovery" | "solution"> =
+      nScenes === 1
+        ? ["solution"]
+        : nScenes === 2
+          ? ["problem", "solution"]
+          : ["problem", "discovery", "solution"];
 
-    const response = await client.chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        { role: "system", content: systemPrompt },
-        {
-          role: "user",
-          content: `Génère la pub pour "${product.name}". GÉNÈRE EXACTEMENT ${nScenes} SCÈNES — ni plus ni moins. Durée totale ${totalDuration}s. Structure AIDA adaptée à la durée. Voiceover qui vend vraiment.`,
-        },
-      ],
-      temperature: 1,
-      max_tokens: 4000,
-      response_format: { type: "json_object" },
-    });
-
-    const raw = response.choices[0]?.message?.content;
-    if (!raw) {
-      return NextResponse.json({ error: "Réponse OpenAI vide" }, { status: 500 });
-    }
-
-    const script = JSON.parse(raw) as {
+    let script: {
       duration?: string;
       productVisualDescription?: string;
+      nScenes?: number;
+      totalDuration?: number;
       scenes?: Array<{
+        number?: number;
+        narrative_role?: string;
+        duration_seconds?: number;
+        voiceover_word_count?: number;
         gemini_prompt?: string;
         productVisualDescription?: string;
         grok_video_prompt?: string;
@@ -180,46 +251,160 @@ IMPORTANT :
         visual_description?: string;
         title?: string;
         character_action?: string;
+        emotion?: string;
+        voiceover?: string;
+        mouth_expression?: string;
+        background?: string;
+        hook?: string;
+        subtitle?: string;
       }>;
-    };
-    if (!script.scenes || script.scenes.length !== nScenes) {
+    } | null = null;
+
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const response = await client.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          { role: "system", content: systemPrompt },
+          {
+            role: "user",
+            content: `Génère le script pour : ${product.name}. ${product.description}. Template: ${templateLabel}. EXACTEMENT ${nScenes} scène(s). EXACTEMENT ${wordsPerScene} mots par voiceover.`,
+          },
+        ],
+        temperature: 0.8,
+        max_tokens: 4000,
+        response_format: { type: "json_object" },
+      });
+
+      const raw = response.choices[0]?.message?.content;
+      if (!raw) continue;
+
+      let parsed: typeof script;
+      try {
+        parsed = JSON.parse(raw) as NonNullable<typeof script>;
+      } catch {
+        continue;
+      }
+
+      if (!parsed?.scenes || !Array.isArray(parsed.scenes)) continue;
+
+      if (parsed.scenes.length !== nScenes) {
+        console.warn(
+          `[SCRIPT] Attempt ${attempt + 1}: ${parsed.scenes.length} scènes au lieu de ${nScenes}`
+        );
+        if (parsed.scenes.length > nScenes) {
+          parsed.scenes = parsed.scenes.slice(0, nScenes);
+        } else {
+          continue;
+        }
+      }
+
+      const wordCountsOk = parsed.scenes.every((scene) => {
+        const wc =
+          scene.voiceover?.trim().split(/\s+/).filter(Boolean).length || 0;
+        return Math.abs(wc - wordsPerScene) <= 1;
+      });
+
+      if (!wordCountsOk) {
+        console.warn(
+          `[SCRIPT] Attempt ${attempt + 1}: voiceover hors cible (${wordsPerScene} ± 1 mots)`
+        );
+        continue;
+      }
+
+      script = parsed;
+      break;
+    }
+
+    if (!script?.scenes) {
       return NextResponse.json(
-        {
-          error: `Mauvais nombre de scènes (${script.scenes?.length ?? 0}/${nScenes})`,
-        },
-        { status: 422 }
+        { error: "Impossible de générer un script valide après 3 tentatives" },
+        { status: 500 }
       );
     }
 
+    script.scenes = script.scenes.map((scene, i) => ({
+      ...scene,
+      number: i + 1,
+    }));
+    script.nScenes = nScenes;
+    script.totalDuration = totalDuration;
     script.productVisualDescription =
       script.productVisualDescription || productVisualDescription;
     script.duration = script.duration || `${totalDuration}s`;
-    script.scenes = script.scenes.map((scene) => {
+    script.hook =
+      script.hook || script.scenes[0]?.voiceover || script.title || "";
+    script.cta =
+      script.cta ||
+      script.scenes[script.scenes.length - 1]?.voiceover ||
+      "";
+
+    script.scenes = script.scenes.map((scene, i) => {
+      const background =
+        scene.background?.trim() ||
+        inferBackground(`${product.name} ${product.description}`);
+
+      let visualDescription = scene.visual_description?.trim() || "";
+      if (visualDescription && !visualDescription.toLowerCase().includes(background.slice(0, 20).toLowerCase())) {
+        visualDescription = `${visualDescription}. Setting: ${background}`;
+      }
+      if (!visualDescription) {
+        visualDescription = `Pixar 3D product hero in setting: ${background}`;
+      }
+
       const currentPrompt = scene.gemini_prompt || "";
-      const ensuredPrompt = currentPrompt.includes(productVisualDescription.slice(0, 24))
-        ? currentPrompt
-        : `${currentPrompt} THE PRODUCT must look EXACTLY like this: ${productVisualDescription}.`;
+      const pixarBase =
+        "Pixar/DreamWorks 3D CGI Toy Story quality, subsurface scattering, oversized expressive cartoon eyes, vibrant oversaturated colors, rim lighting, depth of field bokeh, NOT photorealistic. ";
+      const role =
+        (scene.narrative_role as "problem" | "discovery" | "solution") ||
+        defaultRoles[i] ||
+        "solution";
+
+      const wordCount =
+        scene.voiceover?.trim().split(/\s+/).filter(Boolean).length || 0;
+      console.log(
+        `[SCRIPT] Scène ${i + 1}: ${wordCount} mots (cible: ${wordsPerScene})`
+      );
+
+      const mouthExpression =
+        scene.mouth_expression || defaultMouthForRole(role);
+
+      const livingProductBlock = isLivingProduct
+        ? `The product ${product.name} IS the sole hero with large Pixar eyes AND an expressive speaking mouth on its front surface (no arms, no limbs). Exact shape and colors: ${productVisualDescription}. `
+        : "";
+
       const fixedGeminiPrompt =
-        `${ensuredPrompt} ` +
-        "VERTICAL 9:16 portrait format only. " +
-        "ONE single product visible, NO duplicate products in background. " +
-        "NO second product anywhere in the scene. " +
-        "The product text and logo must be clearly readable. " +
-        "Use a rich contextual environment related to the product, never a plain white or studio background.";
+        pixarBase +
+        livingProductBlock +
+        `Mouth expression: ${mouthExpression}. ` +
+        `BACKGROUND: ${background}. ` +
+        (currentPrompt.includes(productVisualDescription.slice(0, 20))
+          ? currentPrompt
+          : `${currentPrompt} PRODUCT EXACT: ${productVisualDescription}.`) +
+        " VERTICAL 9:16. ONE product character only — NO other faced objects in background. NO white plain background.";
+
       const fixedVideoPrompt =
+        `${livingProductBlock}Setting: ${background}. ` +
         (
           scene.grok_video_prompt ||
           scene.video_prompt ||
           scene.grok_prompt ||
           scene.animation_prompt ||
-          `Pixar 3D animated commercial, vertical 9:16. ${
-            scene.visual_description || scene.title || "Animated product scene"
-          }. ${scene.character_action || ""}. Cinematic lighting, commercial quality.`
+          `Pixar 3D animated commercial, vertical 9:16. ${visualDescription}. ${scene.character_action || "product speaks with animated mouth"}.`
         ) +
-        " Vertical 9:16 portrait. Single product only, no duplicates. Rich contextual background, never white or plain studio.";
+        ` Mouth (${mouthExpression}) animates as if speaking the voiceover. No other characters with faces. Smooth camera push-in, cinematic lighting.`;
 
       return {
         ...scene,
+        narrative_role: role,
+        duration_seconds: secondsPerScene,
+        voiceover_word_count: wordCount,
+        background,
+        visual_description: visualDescription,
+        character_action:
+          scene.character_action ||
+          "Product speaks — mouth and eyes animated, no limbs",
+        mouth_expression: mouthExpression,
+        hook: scene.hook || scene.voiceover || "",
         gemini_prompt: fixedGeminiPrompt,
         grok_video_prompt: fixedVideoPrompt,
         productVisualDescription,
@@ -234,4 +419,12 @@ IMPORTANT :
       { status: 500 }
     );
   }
+}
+
+function defaultMouthForRole(
+  role: "problem" | "discovery" | "solution"
+): string {
+  if (role === "problem") return "concerned open mouth";
+  if (role === "discovery") return "surprised O";
+  return "big smile";
 }

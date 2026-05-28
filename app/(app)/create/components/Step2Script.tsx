@@ -1,5 +1,6 @@
 "use client";
 
+import { getActiveScenes } from "@/lib/adScenes";
 import { getTemplateConfig } from "@/lib/adTemplates";
 import type { AdScript, ProductInput } from "@/types/ad";
 
@@ -18,6 +19,8 @@ export default function Step2Script({
   regenerateLoading,
   onNext,
 }: Props) {
+  const scenes = getActiveScenes(product, script);
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <section className="studio-section">
@@ -28,7 +31,7 @@ export default function Step2Script({
             <div className="step-sub">
               {getTemplateConfig(product.template).emoji}{" "}
               {getTemplateConfig(product.template).name} · {product.name} ·{" "}
-              {script.scenes.length} scènes
+              {scenes.length} scène{scenes.length > 1 ? "s" : ""}
             </div>
           </div>
           <button
@@ -76,10 +79,10 @@ export default function Step2Script({
 
       <section className="studio-section">
         <div className="step-title" style={{ marginBottom: 12 }}>
-          Scènes ({script.scenes.length})
+          Scènes ({scenes.length})
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {script.scenes.map((sc) => (
+          {scenes.map((sc) => (
             <div
               key={sc.number}
               style={{
@@ -115,6 +118,22 @@ export default function Step2Script({
                 </span>
               </div>
               <div style={{ fontSize: 11, color: "var(--text2)", marginBottom: 6 }}>
+                {sc.narrative_role && (
+                  <span
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 600,
+                      color: "var(--accent-warm)",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    {sc.narrative_role}
+                    {sc.duration_seconds ? ` · ${sc.duration_seconds}s` : ""}
+                    {sc.voiceover_word_count != null
+                      ? ` · ${sc.voiceover_word_count} mots`
+                      : ""}
+                  </span>
+                )}
                 {sc.visual_description}
               </div>
               <div style={{ fontSize: 11, fontStyle: "italic" }}>🎙 {sc.voiceover}</div>

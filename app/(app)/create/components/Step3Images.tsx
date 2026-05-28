@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { getActiveScenes } from "@/lib/adScenes";
 import type { AdScript, ProductInput } from "@/types/ad";
 
 interface Props {
@@ -11,7 +12,7 @@ interface Props {
   onNext: () => void;
 }
 
-type GenStep = "idle" | "scenes" | "done";
+type GenStep = "idle" | "analyzing" | "scenes" | "done";
 
 export default function Step3Images({
   product,
@@ -25,6 +26,19 @@ export default function Step3Images({
   const [genStep, setGenStep] = useState<GenStep>("idle");
   const [globalLoading, setGlobal] = useState(false);
   const [generatingIndex, setGeneratingIndex] = useState<number | null>(null);
+  const inflightRef = useRef<Set<string>>(new Set());
+  const productAnalysisRef = useRef<string | null>(null);
+
+  const scenes = useMemo(
+    () => getActiveScenes(product, script),
+    [product, script]
+  );
+
+  const sceneId = (index: number) => `scene_${index + 1}`;
+
+  useEffect(() => {
+    productAnalysisRef.current = null;
+  }, [product.images, product.description, script.productVisualDescription]);
 
   const productImageRefs = product.images.map((base64, index) => ({
     base64,
@@ -32,34 +46,80 @@ export default function Step3Images({
     url: `data:${product.imagesMimeType?.[index] || "image/jpeg"};base64,${base64}`,
   }));
 
+  const fetchProductAnalysis = async (): Promise<string> => {
+    if (productAnalysisRef.current) {
+      return productAnalysisRef.current;
+    }
+
+    const fallback =
+      script.productVisualDescription ||
+      product.description ||
+      product.name;
+
+    if (productImageRefs.length === 0) {
+      productAnalysisRef.current = fallback;
+      return fallback;
+    }
+
+    console.log("[STEP3] Analyse produit (GPT-4o Vision)...");
+    const res = await fetch("/api/analyze-product", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        productImages: productImageRefs,
+        productDescription: fallback,
+      }),
+    });
+
+    const data = await res.json();
+    if (!res.ok || data.error) {
+      throw new Error(data.error || "Erreur analyse produit");
+    }
+
+    productAnalysisRef.current = data.productAnalysis || fallback;
+    console.log("[STEP3] Analyse:", productAnalysisRef.current);
+    return productAnalysisRef.current;
+  };
+
   const genImage = async (
     sceneIndex: number,
-    scene: AdScript["scenes"][number]
+    scene: AdScript["scenes"][number],
+    productAnalysis: string
   ) => {
-    const id = `scene_${scene.number}`;
+    const id = sceneId(sceneIndex);
+
+    if (inflightRef.current.has(id)) {
+      console.log("[STEP3] Déjà en cours pour", id);
+      return;
+    }
+    inflightRef.current.add(id);
+
     setLoading((prev) => ({ ...prev, [id]: true }));
     setErrors((prev) => ({ ...prev, [id]: "" }));
 
     try {
-      console.log("[STEP3] Génération image scène", sceneIndex);
+      console.log(
+        `[STEP3] 1 seul appel API — scène ${sceneIndex + 1}/${scenes.length}`
+      );
       const res = await fetch("/api/images", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           scene,
+          sceneIndex,
+          totalScenes: scenes.length,
           productDescription:
             script.productVisualDescription ||
             product.description ||
             product.name,
+          productAnalysis,
           productImages: productImageRefs,
           template: product.template,
-          sceneIndex,
         }),
       });
 
       const data = await res.json();
       if (!res.ok || data.error) {
-        console.error("[STEP3] Erreur scène", sceneIndex, ":", data.error);
         setErrors((prev) => ({
           ...prev,
           [id]: data.error || "Erreur inconnue",
@@ -67,46 +127,90 @@ export default function Step3Images({
         return;
       }
 
-      console.log("[STEP3] ✅ Image scène", sceneIndex, "reçue");
       onImageGenerated(id, data.imageUrl || data.url);
     } catch (e) {
-      console.error(
-        "[STEP3] Erreur fetch scène",
-        sceneIndex,
-        ":",
-        e instanceof Error ? e.message : "Erreur"
-      );
       setErrors((prev) => ({
         ...prev,
         [id]: e instanceof Error ? e.message : "Erreur",
       }));
     } finally {
+      inflightRef.current.delete(id);
       setLoading((prev) => ({ ...prev, [id]: false }));
     }
   };
 
   const generateAllImages = async () => {
+    if (globalLoading || scenes.length === 0) return;
+
     setGlobal(true);
-    setGenStep("scenes");
-    for (let i = 0; i < script.scenes.length; i++) {
-      setGeneratingIndex(i);
-      await genImage(i, script.scenes[i]);
+    setGenStep("analyzing");
+
+    try {
+      const productAnalysis = await fetchProductAnalysis();
+      setGenStep("scenes");
+      console.log("[STEP3] Génération de", scenes.length, "image(s) max");
+
+      for (let i = 0; i < scenes.length; i++) {
+        setGeneratingIndex(i);
+        await genImage(i, scenes[i], productAnalysis);
+      }
+
+      setGenStep("done");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Erreur";
+      setErrors((prev) => ({ ...prev, _global: msg }));
+    } finally {
+      setGeneratingIndex(null);
+      setGlobal(false);
     }
-    setGeneratingIndex(null);
-    setGenStep("done");
-    setGlobal(false);
   };
 
-  const allDone = script.scenes.every((scene) => images[`scene_${scene.number}`]);
+  const generateSingleImage = async (
+    sceneIndex: number,
+    scene: AdScript["scenes"][number]
+  ) => {
+    try {
+      const productAnalysis = await fetchProductAnalysis();
+      await genImage(sceneIndex, scene, productAnalysis);
+    } catch (e) {
+      const id = sceneId(sceneIndex);
+      setErrors((prev) => ({
+        ...prev,
+        [id]: e instanceof Error ? e.message : "Erreur",
+      }));
+    }
+  };
+
+  const allDone = scenes.every((_, i) => images[sceneId(i)]);
 
   const stepLabel: Record<GenStep, string> = {
-    idle: "🖼 Générer tous les visuels",
-    scenes: "⏳ Gemini génère les scènes...",
+    idle:
+      scenes.length === 1
+        ? "🖼 Générer l'image"
+        : `🖼 Générer les ${scenes.length} visuels`,
+    analyzing: "🔍 Analyse du produit...",
+    scenes:
+      scenes.length === 1
+        ? "⏳ Gemini génère l'image..."
+        : "⏳ Gemini génère les scènes...",
     done: "✓ Visuels prêts",
   };
 
   return (
     <div>
+      <p
+        style={{
+          fontSize: 12,
+          color: "var(--text2)",
+          marginBottom: 16,
+        }}
+      >
+        {scenes.length} scène{scenes.length > 1 ? "s" : ""} ·{" "}
+        {scenes.length === 1
+          ? "1 image sera générée"
+          : `${scenes.length} images seront générées`}
+      </p>
+
       <div style={{ display: "flex", gap: 10, marginBottom: 24 }}>
         <button
           type="button"
@@ -165,15 +269,16 @@ export default function Step3Images({
           gap: 12,
         }}
       >
-        {script.scenes.map((scene) => {
-          const id = `scene_${scene.number}`;
+        {scenes.map((scene, i) => {
+          const id = sceneId(i);
           const imageUrl = images[id];
           const isLoading = loading[id];
           const error = errors[id];
+          const busy = isLoading || generatingIndex === i;
 
           return (
             <div
-              key={scene.number}
+              key={id}
               style={{
                 background: "var(--bg2)",
                 border: "1px solid var(--border)",
@@ -197,7 +302,7 @@ export default function Step3Images({
                       width: "100%",
                       height: "100%",
                       objectFit: "cover",
-                      opacity: isLoading ? 0.4 : 1,
+                      opacity: busy ? 0.4 : 1,
                     }}
                   />
                 ) : (
@@ -211,7 +316,7 @@ export default function Step3Images({
                       fontSize: 24,
                     }}
                   >
-                    {isLoading ? "…" : "9:16"}
+                    {busy ? "…" : "9:16"}
                   </div>
                 )}
               </div>
@@ -225,7 +330,7 @@ export default function Step3Images({
                     marginBottom: 4,
                   }}
                 >
-                  Scène {scene.number} — {scene.title}
+                  Scène {i + 1} — {scene.title}
                 </div>
                 <div
                   style={{
@@ -254,16 +359,12 @@ export default function Step3Images({
 
                 <button
                   type="button"
-                  onClick={() => genImage(scene.number - 1, scene)}
-                  disabled={isLoading}
+                  onClick={() => generateSingleImage(i, scene)}
+                  disabled={busy || globalLoading}
                   className="btn-sec"
                   style={{ width: "100%", fontSize: 11 }}
                 >
-                  {isLoading || generatingIndex === scene.number - 1
-                    ? "…"
-                    : imageUrl
-                      ? "🔄 Régénérer"
-                      : "Générer"}
+                  {busy ? "…" : imageUrl ? "🔄 Régénérer" : "Générer"}
                 </button>
               </div>
             </div>

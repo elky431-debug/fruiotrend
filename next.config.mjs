@@ -4,6 +4,10 @@ const nextConfig = {
     serverActions: {
       bodySizeLimit: "10mb",
     },
+    serverComponentsExternalPackages: [
+      "ffmpeg-static",
+      "@ffmpeg-installer/ffmpeg",
+    ],
   },
   async redirects() {
     return [

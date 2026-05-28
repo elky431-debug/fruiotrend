@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { normalizeAdScript } from "@/lib/adScenes";
 import type { AdScript, ProductInput } from "@/types/ad";
 import Step1Product from "./Step1Product";
 import Step2Script from "./Step2Script";
@@ -11,7 +12,7 @@ const TABS = [
   { num: 1 as const, label: "Produit", api: "" },
   { num: 2 as const, label: "Script", api: "GPT-4o" },
   { num: 3 as const, label: "Visuels", api: "Gemini" },
-  { num: 4 as const, label: "Vidéo", api: "Grok" },
+  { num: 4 as const, label: "Vidéo", api: "LTX + voix + lip sync" },
 ];
 
 export default function CreatorLayout() {
@@ -46,7 +47,7 @@ export default function CreatorLayout() {
       if (!res.ok) throw new Error(data.error || "Erreur script");
 
       setProduct(input);
-      setScript(data as AdScript);
+      setScript(normalizeAdScript(data as AdScript, input.nScenes));
       setImages({});
       setVideos({});
       setTab(2);

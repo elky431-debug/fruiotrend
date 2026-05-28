@@ -39,13 +39,25 @@ export interface AdCharacter {
   gemini_character_prompt: string;
 }
 
+export type NarrativeRole = "problem" | "discovery" | "solution";
+
 export interface AdScene {
   number: number;
   title: string;
   aida_stage?: string;
+  /** Rôle narratif : problème → découverte → solution */
+  narrative_role?: NarrativeRole;
+  /** Décor contextuel EN (généré par GPT) — injecté dans les prompts image */
+  background?: string;
   visual_description: string;
   character_action: string;
   voiceover: string;
+  /** Durée cible de la scène (secondes) */
+  duration_seconds?: number;
+  voiceover_word_count?: number;
+  emotion?: string;
+  /** Expression de bouche pour Gemini / vidéo */
+  mouth_expression?: string;
   subtitle: string;
   hook: string;
   gemini_prompt: string;
@@ -61,7 +73,10 @@ export interface AdScript {
   hook: string;
   cta: string;
   duration: string;
+  totalDuration?: number;
   productVisualDescription: string;
+  /** Nombre de scènes demandé à la génération (choix utilisateur). */
+  nScenes: number;
   scenes: AdScene[];
   character: AdCharacter;
 }

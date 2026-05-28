@@ -86,22 +86,16 @@ export const AD_TEMPLATES: AdTemplateConfig[] = [
 ];
 
 export const TEMPLATE_SYSTEM_PROMPTS: Record<AdTemplate, string> = {
-  living_product: `STYLE EXACT : Le produit lui-même prend vie et devient le personnage principal.
-COMME dans la pub Courtx : le produit devient une créature avec de grands yeux expressifs intégrés dans sa surface et de petits bras/jambes qui émergent naturellement de sa forme.
+  living_product: `STYLE EXACT : Le produit lui-même prend vie (style Pixar Cars — yeux + bouche sur sa surface).
 
 RÈGLES ABSOLUES pour le template Produit Vivant :
 1. Le produit GARDE son apparence exacte à 100% (couleurs, packaging, logo, forme)
-2. Des yeux de cartoon expressifs sont intégrés naturellement sur la surface du produit
-3. De petits bras et jambes cartoon émergent des côtés du produit
-4. Le produit-personnage fait des gestes, s'anime, parle directement à la caméra
-5. On reconnaît IMMÉDIATEMENT le vrai produit — pas une mascotte générique
+2. Yeux cartoon expressifs + bouche parlante sur la surface du produit — PAS de bras, PAS de jambes
+3. Le produit parle à la 1ère personne via voiceover — bouche animée
+4. AUCUN autre personnage avec un visage en arrière-plan — le produit est seul
+5. On reconnaît IMMÉDIATEMENT le vrai produit
 
-SCÈNE 1 (ATTENTION) : Le produit est posé, inerte. Soudain ses yeux s'ouvrent. Il se lève et interpelle le spectateur avec une question choc.
-SCÈNE 2 (INTÉRÊT) : Le produit-personnage imite le problème que ressent le client puis pointe vers lui-même comme solution.
-SCÈNE 3 (DÉSIR) : Le produit-personnage démontre son pouvoir en action, avec des effets visuels spectaculaires.
-SCÈNE 4 (ACTION) : Le produit-personnage pointe vers la caméra, lève un bras, appelle à l'action avec enthousiasme.
-
-Dans les gemini_prompt : TOUJOURS décrire le produit avec ses caractéristiques visuelles exactes + les yeux/bras intégrés naturellement.`,
+Dans les gemini_prompt : produit exact + yeux + bouche + décor contextuel, sans personnages parasites.`,
 
   influencer: `Un influenceur cartoon 3D Pixar (genre/apparence défini par la cible) tient et utilise le produit.
 Il parle directement à la caméra comme dans une vraie vidéo UGC mais version cartoon.
