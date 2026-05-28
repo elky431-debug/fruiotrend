@@ -15,9 +15,14 @@ export function base64ToBlobUrl(
 }
 
 /** MP3 frame sync or ID3 tag */
-export function looksLikeMp3(buffer: ArrayBuffer): boolean {
-  if (buffer.byteLength < 3) return false;
-  const v = new Uint8Array(buffer);
+export function looksLikeMp3(buffer: ArrayBuffer | Buffer | Uint8Array): boolean {
+  const v =
+    buffer instanceof Uint8Array
+      ? buffer
+      : Buffer.isBuffer(buffer)
+        ? buffer
+        : new Uint8Array(buffer);
+  if (v.length < 3) return false;
   if (v[0] === 0x49 && v[1] === 0x44 && v[2] === 0x33) return true; // ID3
   return v[0] === 0xff && (v[1] & 0xe0) === 0xe0;
 }

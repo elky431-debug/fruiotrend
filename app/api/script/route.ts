@@ -232,11 +232,14 @@ ${nScenes === 1 ? "⚠️ UNE SEULE SCÈNE — tableau scenes avec EXACTEMENT 1 
           ? ["problem", "solution"]
           : ["problem", "discovery", "solution"];
 
-    let script: {
+    type ScriptDraft = {
       duration?: string;
       productVisualDescription?: string;
       nScenes?: number;
       totalDuration?: number;
+      title?: string;
+      hook?: string;
+      cta?: string;
       scenes?: Array<{
         number?: number;
         narrative_role?: string;
@@ -258,7 +261,9 @@ ${nScenes === 1 ? "⚠️ UNE SEULE SCÈNE — tableau scenes avec EXACTEMENT 1 
         hook?: string;
         subtitle?: string;
       }>;
-    } | null = null;
+    };
+
+    let script: ScriptDraft | null = null;
 
     for (let attempt = 0; attempt < 3; attempt++) {
       const response = await client.chat.completions.create({
@@ -278,9 +283,9 @@ ${nScenes === 1 ? "⚠️ UNE SEULE SCÈNE — tableau scenes avec EXACTEMENT 1 
       const raw = response.choices[0]?.message?.content;
       if (!raw) continue;
 
-      let parsed: typeof script;
+      let parsed: ScriptDraft;
       try {
-        parsed = JSON.parse(raw) as NonNullable<typeof script>;
+        parsed = JSON.parse(raw) as ScriptDraft;
       } catch {
         continue;
       }

@@ -76,9 +76,10 @@ export default function Step3Images({
       throw new Error(data.error || "Erreur analyse produit");
     }
 
-    productAnalysisRef.current = data.productAnalysis || fallback;
-    console.log("[STEP3] Analyse:", productAnalysisRef.current);
-    return productAnalysisRef.current;
+    const analysis = String(data.productAnalysis || fallback);
+    productAnalysisRef.current = analysis;
+    console.log("[STEP3] Analyse:", analysis);
+    return analysis;
   };
 
   const genImage = async (

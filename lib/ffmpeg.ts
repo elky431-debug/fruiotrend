@@ -1,5 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
+import { createRequire } from "node:module";
+
+const require = createRequire(path.join(process.cwd(), "package.json"));
 
 /**
  * Chemin absolu vers ffmpeg.exe (ou binaire système).
@@ -13,7 +16,6 @@ export function resolveFfmpegPath(): string {
   }
 
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const installer = require("@ffmpeg-installer/ffmpeg") as { path?: string };
     if (installer?.path && fs.existsSync(installer.path)) {
       return installer.path;
@@ -23,7 +25,6 @@ export function resolveFfmpegPath(): string {
   }
 
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const ffmpegStatic = require("ffmpeg-static") as string | undefined;
     if (ffmpegStatic && fs.existsSync(ffmpegStatic)) {
       return ffmpegStatic;

@@ -73,15 +73,13 @@ export async function DELETE(
   ];
 
   await Promise.allSettled(
-    buckets.map((bucket) =>
-      supabase.storage.from(bucket).list(params.id).then(({ data }) => {
-        if (data?.length) {
-          const paths = data.map((file) => `${params.id}/${file.name}`);
-          return supabase.storage.from(bucket).remove(paths);
-        }
-        return Promise.resolve();
-      })
-    )
+    buckets.map(async (bucket) => {
+      const { data } = await supabase.storage.from(bucket).list(params.id);
+      if (data?.length) {
+        const paths = data.map((file) => `${params.id}/${file.name}`);
+        await supabase.storage.from(bucket).remove(paths);
+      }
+    })
   );
 
   const { error } = await supabase.from("ads").delete().eq("id", params.id);

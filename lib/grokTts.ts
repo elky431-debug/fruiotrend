@@ -37,7 +37,12 @@ export async function generateGrokSpeech(
   text: string,
   voiceId: string,
   language = "fr"
-): Promise<{ audioBase64: string; mimeType: string }> {
+): Promise<{
+  audioBase64: string;
+  mimeType: string;
+  provider?: "grok-tts";
+  voiceId?: string;
+}> {
   const apiKey = process.env.GROK_API_KEY;
   if (!apiKey) {
     throw new Error("GROK_API_KEY manquante");
