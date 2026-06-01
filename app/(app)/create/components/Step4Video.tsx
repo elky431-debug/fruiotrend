@@ -2,7 +2,10 @@
 
 import { useMemo, useState } from "react";
 import { getActiveScenes } from "@/lib/adScenes";
-import { resolveVoiceDemoCategory } from "@/lib/voices";
+import {
+  buildLtxVoiceStyleHint,
+  resolveVoiceDemoCategory,
+} from "@/lib/voices";
 import type { AdScript, ProductInput } from "@/types/ad";
 import VoiceSelector from "./VoiceSelector";
 
@@ -81,6 +84,7 @@ async function generateSceneVideoFast(
   imageUrl: string | null,
   imageBase64: string | null,
   durationSeconds?: number,
+  audioOpts?: { voiceover: string; voiceStyle: string; template?: string },
   callbacks?: {
     onStart?: () => void;
     onPoll?: (progressPct: number) => void;
@@ -113,6 +117,9 @@ async function generateSceneVideoFast(
         prompt: basePrompt,
         durationSeconds: durationSeconds || sc.duration_seconds,
         mouthExpression: sc.mouth_expression,
+        voiceover: audioOpts?.voiceover,
+        voiceStyle: audioOpts?.voiceStyle,
+        template: audioOpts?.template,
       }),
     });
 
@@ -127,26 +134,6 @@ async function generateSceneVideoFast(
   } finally {
     window.clearInterval(tick);
   }
-}
-
-async function applyLipsync(
-  videoUrl: string,
-  voiceData: { audioBase64?: string; audioUrl?: string }
-): Promise<{ videoUrl: string; lipsyncApplied: boolean }> {
-  const res = await fetch("/api/lipsync", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      videoUrl,
-      audioBase64: voiceData.audioBase64,
-      audioUrl: voiceData.audioUrl,
-    }),
-  });
-  const data = await res.json().catch(() => ({}));
-  return {
-    videoUrl: (data.videoUrl as string) || videoUrl,
-    lipsyncApplied: Boolean(data.lipsyncApplied),
-  };
 }
 
 type Step = "idle" | "animating" | "assembling" | "done" | "error";
@@ -170,7 +157,7 @@ export default function Step4Video({
   const [saving, setSaving] = useState(false);
   const [savedOk, setSavedOk] = useState(false);
   const [audios, setAudios] = useState<Record<number, AudioAsset>>({});
-  const [selectedVoice, setSelectedVoice] = useState("Rachel");
+  const [selectedVoice, setSelectedVoice] = useState("eve");
 
   const scenes = useMemo(
     () => getActiveScenes(product, script),
@@ -198,8 +185,8 @@ export default function Step4Video({
         fallbackVideoUrl?: string | null;
       }
     > = {};
-    const sceneAudios: Record<number, AudioAsset> = {};
     const total = scenes.length;
+    const voiceStyle = buildLtxVoiceStyleHint(voiceName);
 
     for (let i = 0; i < total; i++) {
       const sc = scenes[i] as ScenePromptFallbacks;
@@ -219,111 +206,63 @@ export default function Step4Video({
       }
 
       setProgressLabel(
-        `Scène ${sc.number}/${total} — vidéo + voix en parallèle...`
+        `Scène ${sc.number}/${total} — LTX (vidéo + voix intégrées)...`
       );
 
-      const [videoResult, voiceResult] = await Promise.allSettled([
-        generateSceneVideoFast(
+      try {
+        const video = await generateSceneVideoFast(
           sc,
           compressed.imageUrl,
           imgData?.base64 || null,
           sc.duration_seconds,
           {
+            voiceover: sc.voiceover.trim(),
+            voiceStyle,
+            template: product.template,
+          },
+          {
             onStart: () => {
-              setProgressLabel(`Scène ${sc.number}/${total} — LTX 2.3 Fast...`);
+              setProgressLabel(
+                `Scène ${sc.number}/${total} — LTX 2.3 Fast + audio...`
+              );
             },
             onPoll: (videoPct) => {
               const overall = Math.min(
-                55,
-                basePct + Math.round((videoPct / 100) * (55 - basePct))
+                68,
+                basePct + Math.round((videoPct / 100) * (68 - basePct))
               );
               setProgress(overall);
               setProgressLabel(
-                `Scène ${sc.number}/${total} — vidéo ${Math.round(videoPct)}%`
+                `Scène ${sc.number}/${total} — ${Math.round(videoPct)}%`
               );
             },
           }
-        ),
-        fetch("/api/voice", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            text: sc.voiceover.trim(),
-            emotion: sc.emotion || "excited",
-            narrativeRole: sc.narrative_role,
-            voiceName,
-            durationSeconds: sc.duration_seconds,
-          }),
-        }).then(async (response) => {
-          const data = await response.json();
-          if (!response.ok) throw new Error(data.error || "Voice error");
-          return data as {
-            audioBase64?: string;
-            mimeType?: string;
-            audioUrl?: string;
-          };
-        }),
-      ]);
+        );
 
-      if (videoResult.status !== "fulfilled" || !videoResult.value.videoUrl) {
-        const videoError =
-          videoResult.status === "rejected"
-            ? videoResult.reason instanceof Error
-              ? videoResult.reason.message
-              : String(videoResult.reason)
-            : "Erreur vidéo inconnue";
-        setError(videoError);
+        if (!video.videoUrl) {
+          setError(`Vidéo manquante pour la scène ${sc.number}`);
+          setStep("error");
+          return;
+        }
+
+        sceneVideos[sc.number] = {
+          videoUrl: video.videoUrl,
+          fallbackVideoUrl: video.videoUrl,
+          videoBase64: null,
+          embeddedAudio: true,
+        };
+
+        setProgress(Math.round(((i + 1) / total) * 70));
+        console.log(`✅ Scène ${sc.number}: LTX vidéo + voix OK`);
+      } catch (videoError) {
+        setError(
+          videoError instanceof Error
+            ? videoError.message
+            : "Erreur génération vidéo"
+        );
         setStep("error");
         return;
       }
-
-      if (
-        voiceResult.status !== "fulfilled" ||
-        !voiceResult.value.audioBase64
-      ) {
-        const voiceError =
-          voiceResult.status === "rejected"
-            ? voiceResult.reason instanceof Error
-              ? voiceResult.reason.message
-              : String(voiceResult.reason)
-            : "audio manquant";
-        setError(`Voix échouée (scène ${sc.number}): ${voiceError}`);
-        setStep("error");
-        return;
-      }
-
-      const voiceData = voiceResult.value;
-      sceneAudios[sc.number] = {
-        base64: voiceData.audioBase64!,
-        mimeType: voiceData.mimeType || "audio/mp3",
-      };
-
-      const ltxVideoUrl = videoResult.value.videoUrl!;
-      let finalVideoUrl = ltxVideoUrl;
-      let embeddedAudio = false;
-
-      setProgress(Math.min(68, basePct + 58));
-      setProgressLabel(`Scène ${sc.number}/${total} — synchro bouche / voix...`);
-
-      const lipsync = await applyLipsync(ltxVideoUrl, {
-        audioBase64: voiceData.audioBase64,
-        audioUrl: voiceData.audioUrl,
-      });
-      if (lipsync.lipsyncApplied) {
-        finalVideoUrl = lipsync.videoUrl;
-        embeddedAudio = true;
-      }
-      console.log(`[STEP4] Lip sync scène ${sc.number}:`, embeddedAudio);
-
-      sceneVideos[sc.number] = {
-        videoUrl: finalVideoUrl,
-        fallbackVideoUrl: ltxVideoUrl,
-        videoBase64: null,
-        embeddedAudio,
-      };
-
-      setProgress(Math.round(((i + 1) / total) * 70));
-      console.log(`✅ Scène ${sc.number}: vidéo + voix + lip sync OK`);
     }
 
     if (Object.keys(sceneVideos).length === 0) {
@@ -334,10 +273,9 @@ export default function Step4Video({
       return;
     }
 
-    setAudios(sceneAudios);
     setStep("assembling");
     setProgress(80);
-    setProgressLabel("Assemblage vidéo + audio...");
+    setProgressLabel("Assemblage des scènes...");
 
     const scenesData = scenes
       .filter((sc) => sceneVideos[sc.number])
@@ -349,8 +287,8 @@ export default function Step4Video({
           fallbackVideoUrl: sv?.fallbackVideoUrl || null,
           videoBase64: sv?.videoBase64 || null,
           embeddedAudio: embedded,
-          audioBase64: embedded ? null : sceneAudios[sc.number]?.base64 || null,
-          audioMimeType: sceneAudios[sc.number]?.mimeType || "audio/mp3",
+          audioBase64: null,
+          audioMimeType: "audio/mp3",
         };
       });
 
@@ -438,9 +376,8 @@ export default function Step4Video({
           Générer la vidéo finale
         </h2>
         <p style={{ fontSize: 13, color: "var(--text2)", marginBottom: 8 }}>
-          LTX Fast + ElevenLabs + lip sync (fal.ai) — {scenes.length === 1 ? "ton image" : `les ${scenes.length} scènes`}{" "}
-          (~1–2 min par scène){" "}
-          puis la voix ElevenLabs est mixée en MP4 final.
+          LTX 2.3 Fast (vidéo + voix intégrées) — {scenes.length === 1 ? "ton image" : `les ${scenes.length} scènes`}{" "}
+          (~1–2 min par scène). Style vocal Grok : aperçu ci-dessous.
         </p>
         {!hasAllImages && (
           <p style={{ fontSize: 12, color: "#F87171", marginBottom: 16 }}>

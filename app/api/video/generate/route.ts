@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { usesHumanPresenter } from "@/lib/adTemplates";
+import type { AdTemplate } from "@/types/ad";
 import {
   buildVideoInput,
   extractVideoUrl,
@@ -12,8 +14,16 @@ export const maxDuration = 300;
 
 export async function POST(req: NextRequest) {
   try {
-    const { imageUrl, imageBase64, prompt, durationSeconds, mouthExpression } =
-      await req.json();
+    const {
+      imageUrl,
+      imageBase64,
+      prompt,
+      durationSeconds,
+      mouthExpression,
+      voiceover,
+      voiceStyle,
+      template,
+    } = await req.json();
     const apiKey = process.env.FAL_API_KEY;
 
     if (!apiKey) {
@@ -30,8 +40,15 @@ export async function POST(req: NextRequest) {
       imageBase64
     );
     console.log(
-      `[VIDEO/GENERATE] Image prête en ${Date.now() - started}ms — LTX 2.3 Fast sync...`
+      `[VIDEO/GENERATE] Image prête en ${Date.now() - started}ms — LTX 2.3 Fast + audio natif...`
     );
+    if (voiceover) {
+      console.log("[VIDEO/GENERATE] Voiceover:", String(voiceover).slice(0, 80));
+    }
+
+    const humanPresenter =
+      template === "influencer" ||
+      (template && usesHumanPresenter(template as AdTemplate));
 
     const falRes = await fetch(VIDEO_RUN, {
       method: "POST",
@@ -45,7 +62,13 @@ export async function POST(req: NextRequest) {
           prompt ||
             "Pixar 3D product ad, subtle camera move, 9:16 vertical, cinematic",
           durationSeconds,
-          mouthExpression
+          mouthExpression,
+          {
+            voiceover: voiceover ? String(voiceover) : undefined,
+            voiceStyle: voiceStyle ? String(voiceStyle) : undefined,
+            language: "French",
+            humanPresenter,
+          }
         )
       ),
     });
@@ -90,7 +113,12 @@ export async function POST(req: NextRequest) {
     const totalMs = Date.now() - started;
     console.log(`[VIDEO/GENERATE] ✅ ${totalMs}ms — ${videoUrl.slice(0, 55)}`);
 
-    return NextResponse.json({ videoUrl, durationMs: totalMs });
+    return NextResponse.json({
+      videoUrl,
+      durationMs: totalMs,
+      embeddedAudio: true,
+      provider: "ltx-2.3-fast",
+    });
   } catch (error) {
     console.error("[VIDEO/GENERATE]", error);
     return NextResponse.json(

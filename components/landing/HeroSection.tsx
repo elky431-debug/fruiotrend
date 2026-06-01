@@ -1,21 +1,15 @@
 import Image from "next/image";
 import Link from "next/link";
+import { LANDING_PREVIEW_IMAGES } from "@/lib/landingPreviews";
 
 const PREVIEW_CARDS = [
   {
-    badge: "HOOK",
-    src: "/landing/drama-cuisine.png",
-    alt: "Pub produit — accroche",
+    badge: "PRODUIT VIVANT",
+    ...LANDING_PREVIEW_IMAGES.produitVivant,
   },
   {
-    badge: "9:16",
-    src: "/landing/drama-chantier.png",
-    alt: "Scène cartoon dropshipping",
-  },
-  {
-    badge: "TIKTOK",
-    src: "/landing/drama-rue.png",
-    alt: "Format vertical pub IA",
+    badge: "INFLUENCEUR",
+    ...LANDING_PREVIEW_IMAGES.influenceur,
   },
 ];
 
@@ -29,14 +23,14 @@ export function HeroSection() {
           <h1 className="landing-h1" style={{ marginTop: "1.5rem" }}>
             Crée des pubs
             <br />
-            <span className="text-gradient">AdCreative</span>
+            <span className="text-gradient">PubMoi</span>
             <br />
             en 5 minutes
           </h1>
 
           <p className="landing-lead">
-            Upload ton produit, script GPT, visuels Gemini avec référence produit,
-            animation Grok 9:16 avec voix Gemini TTS — prêt pour TikTok et Meta.
+            Upload ton produit, script GPT-4o, visuels Gemini fidèles à ta photo,
+            vidéo LTX 2.3 avec voix intégrée — format 9:16 prêt pour TikTok et Meta.
           </p>
 
           <Link
@@ -84,7 +78,7 @@ export function HeroSection() {
             </div>
             <p style={{ fontSize: 13, color: "#c4b5a8" }}>
               <strong style={{ color: "#fff8f2" }}>2 000+</strong> créateurs{" "}
-              <span style={{ color: "#f5b623" }}>★★★★★</span>
+              <span style={{ color: "#ff5c9d" }}>★★★★★</span>
             </p>
           </div>
         </div>
@@ -99,7 +93,8 @@ export function HeroSection() {
                   alt={card.alt}
                   width={360}
                   height={640}
-                  priority={card.badge === "TIKTOK"}
+                  className="landing-media-img"
+                  priority={card.badge === "INFLUENCEUR"}
                 />
               </div>
             </div>

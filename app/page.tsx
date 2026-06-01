@@ -1,8 +1,12 @@
+import { ComparisonSection } from "@/components/landing/ComparisonSection";
 import { FAQSection } from "@/components/landing/FAQSection";
+import { FeaturesSection } from "@/components/landing/FeaturesSection";
+import { FinalCTASection } from "@/components/landing/FinalCTASection";
 import { HeroSection } from "@/components/landing/HeroSection";
 import { HowItWorksSection } from "@/components/landing/HowItWorksSection";
 import { Navbar } from "@/components/landing/Navbar";
 import { SocialProofSection } from "@/components/landing/SocialProofSection";
+import { StatsSection } from "@/components/landing/StatsSection";
 import { TestimonialsSection } from "@/components/landing/TestimonialsSection";
 import Link from "next/link";
 import "./landing.css";
@@ -12,9 +16,12 @@ export default function HomePage() {
     <div className="landing-root">
       <Navbar />
       <HeroSection />
+      <StatsSection />
       <HowItWorksSection />
+      <FeaturesSection />
       <SocialProofSection />
       <TestimonialsSection />
+      <ComparisonSection />
 
       <section id="tarifs" className="landing-section">
         <div className="landing-section-inner" style={{ textAlign: "center" }}>
@@ -27,13 +34,10 @@ export default function HomePage() {
             ].map((plan) => (
               <div
                 key={plan.name}
-                className="card-base"
-                style={{
-                  padding: 24,
-                  border: plan.tag
-                    ? "1px solid rgba(227, 43, 69, 0.5)"
-                    : undefined,
-                }}
+                className={`card-base landing-plan-card${
+                  plan.tag ? " landing-plan-featured" : ""
+                }`}
+                style={{ padding: 24 }}
               >
                 {plan.tag && (
                   <span
@@ -82,16 +86,18 @@ export default function HomePage() {
 
       <FAQSection />
 
+      <FinalCTASection />
+
       <footer
         style={{
-          borderTop: "1px solid rgba(245, 182, 67, 0.12)",
+          borderTop: "1px solid rgba(255, 92, 157, 0.14)",
           padding: "2rem 1rem",
           textAlign: "center",
           fontSize: 13,
           color: "#7a6f64",
         }}
       >
-        AdCreative.io — 2026
+        PubMoi.io — 2026
       </footer>
     </div>
   );

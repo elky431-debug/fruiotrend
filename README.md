@@ -1,6 +1,6 @@
-# FruitDrama.io — Clone
+# PubMoi
 
-Copie fidèle de [fruitdrama.io](https://fruitdrama.io) — SaaS de génération de vidéos fruits dramatiques pour TikTok/Reels/Shorts.
+SaaS de création de pubs dropshipping 9:16 — script IA, visuels cartoon et vidéos pour TikTok / Meta.
 
 ## Design
 

@@ -11,20 +11,25 @@
 }
 
 :root {
-  --bg: #0a0806;
-  --bg1: #12100d;
-  --bg2: #1a1612;
-  --bg3: #262018;
-  --bg4: #322a20;
-  --border: rgba(245, 182, 67, 0.12);
-  --border2: rgba(227, 43, 69, 0.35);
+  --bg: #0a0705;
+  --bg1: #140f0c;
+  --bg2: #1d1611;
+  --bg3: #2a201a;
+  --bg4: #382a20;
+  --border: rgba(255, 92, 157, 0.14);
+  --border2: rgba(227, 43, 69, 0.38);
   --accent: #e32b45;
   --accent2: #ff5c7a;
-  --accent-warm: #f5b623;
+  --accent-warm: #ff5c9d;
+  --accent-orange: #ff5c9d;
+  --accent-pink: #ff5c9d;
   --accent-cherry: #b91c3c;
-  --accent-soft: #ff8fa3;
-  --done: #f5b623;
-  --done-bg: rgba(245, 182, 67, 0.15);
+  --accent-soft: #ff8fbf;
+  /* Dégradé signature rose → rouge */
+  --grad-or: linear-gradient(135deg, #ff6fae 0%, #ff3d6e 45%, #e32b45 100%);
+  --grad-or-rev: linear-gradient(135deg, #e32b45 0%, #ff3d6e 55%, #ff6fae 100%);
+  --done: #ff5c9d;
+  --done-bg: rgba(255, 92, 157, 0.15);
   --text: #fff8f2;
   --text2: #c4b5a8;
   --text3: #7a6f64;
@@ -48,6 +53,43 @@ body {
   line-height: 1.6;
 }
 
+.product-upload-zone {
+  position: relative;
+  display: block;
+  min-height: 120px;
+}
+
+.product-upload-zone input[type="file"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 10;
+  font-size: 0;
+}
+
+.product-upload-zone input[type="file"]:disabled {
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.pubmoi-logo-img {
+  width: var(--logo-w, 150px) !important;
+  height: var(--logo-h, auto) !important;
+  min-width: var(--logo-w, 150px);
+  max-width: none !important;
+  object-fit: contain;
+  display: block;
+}
+
+.app-shell .pubmoi-logo-img {
+  flex-shrink: 0;
+}
+
 .app-shell {
   position: relative;
   isolation: isolate;
@@ -63,7 +105,7 @@ body {
   z-index: 0;
   background:
     radial-gradient(ellipse 90% 60% at 5% 0%, rgba(227, 43, 69, 0.18) 0%, transparent 50%),
-    radial-gradient(ellipse 70% 50% at 95% 5%, rgba(245, 182, 67, 0.14) 0%, transparent 45%),
+    radial-gradient(ellipse 70% 50% at 95% 5%, rgba(255, 92, 157, 0.14) 0%, transparent 45%),
     radial-gradient(ellipse 60% 40% at 50% 100%, rgba(185, 28, 60, 0.1) 0%, transparent 50%);
 }
 
@@ -144,14 +186,17 @@ textarea {
   background: var(--bg3);
 }
 .chip.active {
-  border-color: rgba(245, 182, 67, 0.5);
-  background: rgba(245, 182, 67, 0.14);
+  border-color: rgba(255, 92, 157, 0.5);
+  background: rgba(255, 92, 157, 0.14);
   color: var(--accent-warm);
-  box-shadow: 0 0 20px rgba(245, 182, 67, 0.08);
+  box-shadow: 0 0 20px rgba(255, 92, 157, 0.08);
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-cherry) 40%, var(--accent-warm) 100%);
+  position: relative;
+  overflow: hidden;
+  background: var(--grad-or);
+  background-size: 180% 180%;
   color: #fff;
   border: none;
   border-radius: 14px;
@@ -163,12 +208,27 @@ textarea {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  box-shadow: 0 6px 28px rgba(227, 43, 69, 0.4);
-  transition: transform 0.15s, box-shadow 0.15s;
+  box-shadow: 0 8px 28px rgba(227, 43, 69, 0.42);
+  transition: transform 0.18s, box-shadow 0.18s, background-position 0.4s;
+}
+.btn-primary::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -120%;
+  width: 55%;
+  height: 100%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+  transform: skewX(-20deg);
+  transition: left 0.6s ease;
 }
 .btn-primary:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 10px 36px rgba(245, 182, 67, 0.35);
+  background-position: 100% 0;
+  box-shadow: 0 12px 40px rgba(255, 92, 157, 0.5);
+}
+.btn-primary:hover:not(:disabled)::after {
+  left: 130%;
 }
 .btn-primary:disabled {
   opacity: 0.4;
@@ -214,15 +274,16 @@ textarea {
   transition: all 0.2s;
 }
 .btn-generate.ready {
-  background: linear-gradient(135deg, var(--accent) 0%, #ff4d65 35%, var(--accent-warm) 100%);
+  background: var(--grad-or);
+  background-size: 180% 180%;
   color: #fff;
   box-shadow:
-    0 8px 32px rgba(227, 43, 69, 0.45),
-    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    0 10px 38px rgba(255, 61, 110, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
 }
 .btn-generate.ready:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 12px 40px rgba(245, 182, 67, 0.35);
+  box-shadow: 0 12px 40px rgba(255, 92, 157, 0.35);
 }
 .btn-generate.disabled {
   background: var(--bg2);
@@ -276,8 +337,8 @@ textarea {
   transition: background 0.3s, box-shadow 0.3s;
 }
 .studio-progress span.filled {
-  background: linear-gradient(90deg, var(--accent), var(--accent-warm));
-  box-shadow: 0 0 12px rgba(245, 182, 67, 0.4);
+  background: linear-gradient(90deg, #ff6fae, #e32b45);
+  box-shadow: 0 0 12px rgba(255, 92, 157, 0.4);
 }
 
 .studio-tabs {
@@ -332,14 +393,14 @@ textarea {
   font-weight: 800;
 }
 .studio-tab-num.active {
-  background: linear-gradient(135deg, var(--accent), var(--accent-warm));
+  background: var(--grad-or);
   color: #fff;
   box-shadow: 0 4px 14px rgba(227, 43, 69, 0.4);
 }
 .studio-tab-num.done {
   background: var(--done-bg);
   color: var(--done);
-  border: 1px solid rgba(245, 182, 67, 0.4);
+  border: 1px solid rgba(255, 92, 157, 0.4);
 }
 .studio-tab-num.pending {
   background: var(--bg4);
@@ -375,7 +436,7 @@ textarea {
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 .studio-section:hover {
-  border-color: rgba(245, 182, 67, 0.22);
+  border-color: rgba(255, 92, 157, 0.22);
   box-shadow: 0 12px 48px rgba(0, 0, 0, 0.28);
 }
 
@@ -390,8 +451,8 @@ textarea {
   width: 36px;
   height: 36px;
   border-radius: 12px;
-  background: linear-gradient(135deg, rgba(227, 43, 69, 0.2), rgba(245, 182, 67, 0.15));
-  border: 1px solid rgba(245, 182, 67, 0.3);
+  background: linear-gradient(135deg, rgba(227, 43, 69, 0.2), rgba(255, 92, 157, 0.15));
+  border: 1px solid rgba(255, 92, 157, 0.3);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -431,7 +492,7 @@ textarea {
 }
 .char-card:hover {
   transform: translateY(-2px);
-  border-color: rgba(245, 182, 67, 0.25);
+  border-color: rgba(255, 92, 157, 0.25);
 }
 .char-card.editing {
   border-color: var(--border2);
@@ -460,7 +521,7 @@ textarea {
   padding: 3px 8px;
   border-radius: 99px;
   background: rgba(227, 43, 69, 0.2);
-  border: 1px solid rgba(245, 182, 67, 0.3);
+  border: 1px solid rgba(255, 92, 157, 0.3);
   color: var(--accent-warm);
 }
 
@@ -528,7 +589,7 @@ textarea {
 
 .char-add {
   min-height: 148px;
-  border: 2px dashed rgba(245, 182, 67, 0.2);
+  border: 2px dashed rgba(255, 92, 157, 0.2);
   border-radius: var(--radius-lg);
   background: transparent;
   display: flex;
@@ -542,7 +603,7 @@ textarea {
   transition: all 0.2s;
 }
 .char-add:hover {
-  border-color: rgba(245, 182, 67, 0.45);
+  border-color: rgba(255, 92, 157, 0.45);
   background: rgba(227, 43, 69, 0.06);
   color: var(--accent-warm);
 }
@@ -608,7 +669,7 @@ textarea {
   padding: 3px 8px;
   border-radius: 99px;
   background: rgba(227, 43, 69, 0.15);
-  border: 1px solid rgba(245, 182, 67, 0.3);
+  border: 1px solid rgba(255, 92, 157, 0.3);
   color: var(--accent-warm);
   cursor: pointer;
   font-family: inherit;
@@ -632,13 +693,13 @@ textarea {
 .badge-accent {
   background: rgba(227, 43, 69, 0.18);
   color: var(--accent-soft);
-  border: 1px solid rgba(245, 182, 67, 0.3);
+  border: 1px solid rgba(255, 92, 157, 0.3);
 }
 .badge-done,
 .badge-green {
   background: var(--done-bg);
   color: var(--done);
-  border: 1px solid rgba(245, 182, 67, 0.35);
+  border: 1px solid rgba(255, 92, 157, 0.35);
 }
 .badge-gray {
   background: var(--bg3);
@@ -647,7 +708,7 @@ textarea {
 }
 
 .text-gradient {
-  background: linear-gradient(135deg, var(--accent2) 0%, var(--accent-warm) 100%);
+  background: var(--grad-or);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -657,7 +718,7 @@ textarea {
   box-shadow: 0 0 40px rgba(227, 43, 69, 0.25);
 }
 .shadow-golden {
-  box-shadow: 0 8px 32px rgba(245, 182, 67, 0.2);
+  box-shadow: 0 8px 32px rgba(255, 92, 157, 0.2);
 }
 .shadow-accent {
   box-shadow: 0 4px 20px rgba(227, 43, 69, 0.35);
@@ -691,7 +752,7 @@ textarea {
   text-transform: uppercase;
   padding: 4px 10px;
   border-radius: 99px;
-  background: linear-gradient(135deg, var(--accent), var(--accent-warm));
+  background: var(--grad-or);
   color: #fff;
 }
 .script-scene-body {
@@ -715,7 +776,7 @@ textarea {
 }
 .script-continue:hover {
   transform: translateY(-2px);
-  box-shadow: 0 12px 40px rgba(245, 182, 67, 0.35);
+  box-shadow: 0 12px 40px rgba(255, 92, 157, 0.35);
 }
 
 .card,
@@ -750,7 +811,7 @@ textarea {
   font-family: inherit;
 }
 .prompt-copy.copied {
-  border-color: rgba(245, 182, 67, 0.4);
+  border-color: rgba(255, 92, 157, 0.4);
   background: var(--done-bg);
   color: var(--done);
 }
@@ -817,4 +878,95 @@ a,
 input,
 textarea {
   transition: all 0.12s ease;
+}
+
+/* ============================================================
+   CREATE — finitions esthétiques (thème orange → rouge)
+   ============================================================ */
+
+/* Halo d'ambiance plus riche orange/rouge */
+.app-shell::before {
+  background:
+    radial-gradient(ellipse 90% 60% at 6% -4%, rgba(255, 92, 157, 0.16) 0%, transparent 52%),
+    radial-gradient(ellipse 75% 55% at 96% 4%, rgba(227, 43, 69, 0.2) 0%, transparent 48%),
+    radial-gradient(ellipse 70% 45% at 50% 104%, rgba(255, 61, 110, 0.12) 0%, transparent 52%);
+}
+
+/* Sections : bordure dégradée qui s'allume au survol + lift */
+.studio-section {
+  position: relative;
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.25s ease, box-shadow 0.25s ease;
+}
+.studio-section::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(255, 92, 157, 0.55), rgba(227, 43, 69, 0.5), transparent 60%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+.studio-section:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.4), 0 0 40px rgba(255, 61, 110, 0.1);
+}
+.studio-section:hover::before {
+  opacity: 1;
+}
+
+/* Pastille d'étape : dégradé orange→rouge plein + glow */
+.step-badge {
+  background: var(--grad-or) !important;
+  color: #fff !important;
+  border: none !important;
+  box-shadow: 0 6px 20px rgba(255, 61, 110, 0.4) !important;
+}
+
+/* Titre principal en dégradé orange→rouge animé */
+.studio-hero h1,
+.app-page > div > h1:first-child {
+  background: var(--grad-or) !important;
+  background-size: 200% 200% !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .studio-hero h1 {
+    animation: orange-shift 6s ease infinite;
+  }
+}
+@keyframes orange-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Chip active → orange */
+.chip.active {
+  color: var(--accent-orange);
+}
+
+/* Inputs : focus halo orange-rouge */
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: rgba(255, 92, 157, 0.5);
+  box-shadow: 0 0 0 3px rgba(255, 92, 157, 0.12);
+}
+
+/* Animation d'entrée des sections */
+@media (prefers-reduced-motion: no-preference) {
+  .studio-section {
+    animation: fadeUp 0.5s ease both;
+  }
+  .studio-section:nth-child(2) { animation-delay: 0.06s; }
+  .studio-section:nth-child(3) { animation-delay: 0.12s; }
+  .studio-section:nth-child(4) { animation-delay: 0.18s; }
 }

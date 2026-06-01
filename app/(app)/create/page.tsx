@@ -3,7 +3,15 @@ import AdCreativeLayout from "./components/AdCreativeLayout";
 
 export default function AdCreativePage() {
   return (
-    <div className="studio-page" style={{ maxWidth: 720, margin: "0 auto" }}>
+    <div
+      className="studio-page"
+      style={{
+        maxWidth: 720,
+        margin: "0 auto",
+        background: "transparent",
+        color: "var(--text)",
+      }}
+    >
       <Link
         href="/dashboard"
         className="btn-sec"

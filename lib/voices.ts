@@ -1,5 +1,4 @@
 import type { ProductInput } from "@/types/ad";
-import { ELEVENLABS_VOICES, normalizeElevenVoiceId } from "@/lib/elevenlabsVoice";
 
 export type VoiceOption = {
   id: string;
@@ -10,21 +9,100 @@ export type VoiceOption = {
   tags: string[];
 };
 
-/** Voix ElevenLabs v3 via fal.ai */
-export const VOICE_OPTIONS: VoiceOption[] = ELEVENLABS_VOICES.map((v) => ({
-  ...v,
-  gender: v.gender as VoiceOption["gender"],
-}));
+/** Voix Grok TTS Aurora (xAI) */
+export const VOICE_OPTIONS: VoiceOption[] = [
+  {
+    id: "eve",
+    name: "Eve",
+    gender: "female",
+    description: "Douce & naturelle",
+    emoji: "👩",
+    tags: ["beauté", "lifestyle"],
+  },
+  {
+    id: "aria",
+    name: "Aria",
+    gender: "female",
+    description: "Claire & dynamique",
+    emoji: "✨",
+    tags: ["sport", "mode"],
+  },
+  {
+    id: "luna",
+    name: "Luna",
+    gender: "female",
+    description: "Chaleureuse & posée",
+    emoji: "🌸",
+    tags: ["luxe", "bien-être"],
+  },
+  {
+    id: "nova",
+    name: "Nova",
+    gender: "female",
+    description: "Énergique & moderne",
+    emoji: "💁‍♀️",
+    tags: ["tech", "gadgets"],
+  },
+  {
+    id: "leo",
+    name: "Leo",
+    gender: "male",
+    description: "Jeune & dynamique",
+    emoji: "🧑",
+    tags: ["sport", "gaming"],
+  },
+  {
+    id: "rex",
+    name: "Rex",
+    gender: "male",
+    description: "Grave & autoritaire",
+    emoji: "💪",
+    tags: ["sport", "fitness"],
+  },
+  {
+    id: "atlas",
+    name: "Atlas",
+    gender: "male",
+    description: "Profond & premium",
+    emoji: "🎭",
+    tags: ["luxe", "tech"],
+  },
+  {
+    id: "orion",
+    name: "Orion",
+    gender: "male",
+    description: "Posé & professionnel",
+    emoji: "🎙️",
+    tags: ["business", "démo"],
+  },
+];
+
+/** Indication de timbre pour le prompt LTX (audio intégré à la vidéo) */
+const LTX_VOICE_STYLE_HINTS: Record<string, string> = {
+  eve: "warm natural female",
+  aria: "clear dynamic female",
+  luna: "soft warm female",
+  nova: "energetic modern female",
+  leo: "young dynamic male",
+  rex: "deep authoritative male",
+  atlas: "deep premium male",
+  orion: "calm professional male",
+};
+
+export function normalizeVoiceId(voiceName?: string): string | null {
+  if (!voiceName) return null;
+  const id = voiceName.trim().toLowerCase();
+  const hit = VOICE_OPTIONS.find((v) => v.id === id);
+  return hit?.id ?? null;
+}
 
 export const VOICE_IDS = new Set(VOICE_OPTIONS.map((v) => v.id));
 
 export const DEMO_TEXT: Record<string, string> = {
-  beaute:
-    "Votre peau mérite le meilleur. Découvrez la différence dès le premier soir.",
-  sport: "Récupérez plus vite. Performez mieux. Chaque jour.",
-  tech: "La technologie qui change votre quotidien. Simple. Efficace. Maintenant.",
-  default:
-    "Découvrez ce produit incroyable. Commandez aujourd'hui et transformez votre vie.",
+  beaute: "Ta peau mérite mieux. Je la transforme en 30 jours.",
+  sport: "Tes muscles me connaissent déjà. Je soulage tout.",
+  tech: "La technologie qui change ton quotidien. C'est moi.",
+  default: "Je suis là pour toi. Essaie-moi maintenant.",
 };
 
 export function resolveVoiceDemoCategory(product: ProductInput): string {
@@ -40,36 +118,29 @@ export function resolveVoiceDemoCategory(product: ProductInput): string {
   }
   if (
     /femme|beaut|mode|lifestyle|parent/i.test(audience) ||
-    [
-      "living_product",
-      "influencer",
-      "lifestyle",
-      "testimonial",
-      "unboxing",
-    ].includes(product.template)
+    ["living_product", "influencer"].includes(product.template)
   ) {
     return "beaute";
   }
   return "default";
 }
 
-export function normalizeVoiceId(voiceName?: string): string | null {
-  if (!voiceName) return null;
-  const normalized = normalizeElevenVoiceId(voiceName);
-  return VOICE_IDS.has(normalized) ? normalized : null;
-}
-
 export function isValidVoiceId(voiceName: string | undefined): boolean {
   return normalizeVoiceId(voiceName) !== null;
+}
+
+export function buildLtxVoiceStyleHint(voiceName?: string): string {
+  const id = normalizeVoiceId(voiceName) || "eve";
+  return LTX_VOICE_STYLE_HINTS[id] || "warm natural";
 }
 
 export function defaultVoiceForProduct(
   productCategory?: string,
   gender?: string
 ): string {
-  if (gender === "male") return "Antoni";
+  if (gender === "male") return "rex";
   if (productCategory === "sport" || productCategory === "tech") {
-    return gender === "male" ? "Adam" : "Elli";
+    return gender === "male" ? "atlas" : "aria";
   }
-  return "Rachel";
+  return "eve";
 }

@@ -50,15 +50,38 @@ export function mapVideoDurationSeconds(seconds?: number): number {
   );
 }
 
+const STRICT_HUMAN_ANATOMY_RULES = `
+STRICT ANATOMY RULES:
+- The character has EXACTLY TWO arms and TWO hands — no more, no less
+- Both hands hold the product steadily throughout the entire video
+- NO extra limbs, NO ghost arms, NO duplicate body parts
+- Character body stays anatomically correct in every single frame
+- Smooth natural movement only — no morphing or body distortion
+- Keep the character appearance 100% consistent from start to finish`;
+
 export function enrichVideoPrompt(
   basePrompt: string,
-  opts?: { mouthExpression?: string }
+  opts?: {
+    mouthExpression?: string;
+    voiceover?: string;
+    voiceStyle?: string;
+    language?: string;
+    /** Influenceur / personnage humain — évite 3 bras, membres fantômes */
+    humanPresenter?: boolean;
+  }
 ): string {
   const mouth = opts?.mouthExpression || "open mouth speaking";
-  const core = String(basePrompt).slice(0, 350);
-  return `${core}. The product has expressive Pixar eyes AND a mouth (${mouth}) that moves as if speaking. Mouth animates with the voiceover. No other characters with faces in scene. Cinematic Pixar 3D. 9:16 vertical.`.slice(
+  const lang = opts?.language || "French";
+  const voiceStyle = opts?.voiceStyle || "warm natural";
+  const core = String(basePrompt).slice(0, opts?.humanPresenter ? 200 : 260);
+  const dialogue = opts?.voiceover?.trim();
+  const speechBlock = dialogue
+    ? ` The character speaks clearly in ${lang} (${voiceStyle} voice), dialogue: "${dialogue.slice(0, 180)}". Lip-synced mouth (${mouth}).`
+    : ` Character speaks in ${lang} with ${voiceStyle} voice, mouth (${mouth}) animated as if talking.`;
+  const anatomy = opts?.humanPresenter ? STRICT_HUMAN_ANATOMY_RULES : "";
+  return `${core}.${speechBlock} Cinematic Pixar 3D ad, 9:16 vertical, synchronized native audio.${anatomy}`.slice(
     0,
-    500
+    650
   );
 }
 
@@ -66,16 +89,28 @@ export function buildVideoInput(
   imageUrl: string,
   prompt: string,
   durationSeconds?: number,
-  mouthExpression?: string
+  mouthExpression?: string,
+  audioOpts?: {
+    voiceover?: string;
+    voiceStyle?: string;
+    language?: string;
+    humanPresenter?: boolean;
+  }
 ) {
   return {
     image_url: imageUrl,
-    prompt: enrichVideoPrompt(prompt, { mouthExpression }),
+    prompt: enrichVideoPrompt(prompt, {
+      mouthExpression,
+      voiceover: audioOpts?.voiceover,
+      voiceStyle: audioOpts?.voiceStyle,
+      language: audioOpts?.language,
+      humanPresenter: audioOpts?.humanPresenter,
+    }),
     duration: mapVideoDurationSeconds(durationSeconds),
     aspect_ratio: "9:16",
     resolution: "1080p",
     fps: 24,
-    generate_audio: false,
+    generate_audio: true,
   };
 }
 
@@ -85,7 +120,7 @@ export async function uploadImageToFal(
   contentType = "image/jpeg"
 ): Promise<string | null> {
   const body = JSON.stringify({
-    file_name: `adcreative-${Date.now()}.jpg`,
+    file_name: `pubmoi-${Date.now()}.jpg`,
     content_type: contentType,
     data: base64,
   });

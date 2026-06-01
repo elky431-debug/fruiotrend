@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { PubMoiLogo } from "@/components/brand/PubMoiLogo";
 
 const NAV = [
   { href: "/dashboard", label: "Mes pubs" },
@@ -36,28 +37,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             height: 60,
           }}
         >
-          <Link
-            href="/"
-            style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: 9 }}
-          >
-            <div
-              style={{
-                width: 28,
-                height: 28,
-                borderRadius: 8,
-                background: "var(--accent)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 14,
-              }}
-            >
-              📢
-            </div>
-            <span style={{ fontWeight: 800, fontSize: 15, color: "var(--text)", letterSpacing: "-0.03em" }}>
-              Ad<span style={{ color: "var(--accent)" }}>Creative</span>
-            </span>
-          </Link>
+          <PubMoiLogo href="/" size="md" priority />
 
           <nav style={{ display: "flex", alignItems: "center", gap: 4 }}>
             {NAV.map((item) => {
@@ -107,13 +87,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 display: "flex",
                 alignItems: "center",
                 gap: 6,
-                background: "rgba(245, 182, 67, 0.1)",
-                border: "1px solid rgba(245, 182, 67, 0.25)",
+                background:
+                  "linear-gradient(135deg, #ff6fae 0%, #ff3d6e 50%, #e32b45 100%)",
+                border: "1px solid rgba(255, 111, 174, 0.45)",
                 borderRadius: 99,
                 padding: "6px 14px",
                 fontSize: 12,
-                color: "var(--accent-warm)",
+                color: "#fff",
                 fontWeight: 700,
+                boxShadow: "0 4px 16px rgba(255, 61, 110, 0.35)",
               }}
             >
               <span
@@ -121,8 +103,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   width: 6,
                   height: 6,
                   borderRadius: "50%",
-                  background: "var(--accent-warm)",
-                  boxShadow: "0 0 8px var(--accent-warm)",
+                  background: "#fff",
+                  boxShadow: "0 0 8px rgba(255,255,255,0.8)",
                 }}
               />
               12 crédits
@@ -148,7 +130,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <main style={{ flex: 1 }}>{children}</main>
+      <main
+        style={{
+          flex: 1,
+          background: "var(--bg)",
+          color: "var(--text)",
+        }}
+      >
+        {children}
+      </main>
     </div>
   );
 }

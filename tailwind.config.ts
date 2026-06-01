@@ -19,9 +19,10 @@ const config: Config = {
         accent: {
           DEFAULT: "#E32B45",
           hover: "#FF5C7A",
-          warm: "#F5B623",
+          warm: "#FF5C9D",
+          pink: "#FF5C9D",
           cherry: "#B91C3C",
-          soft: "#FF8FA3",
+          soft: "#FF8FBF",
         },
         text: {
           primary: "#FFF8F2",
@@ -29,7 +30,7 @@ const config: Config = {
           muted: "#7A6F64",
         },
         border: {
-          DEFAULT: "rgba(245, 182, 67, 0.12)",
+          DEFAULT: "rgba(255, 92, 157, 0.14)",
           light: "rgba(227, 43, 69, 0.35)",
         },
       },

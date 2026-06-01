@@ -1,5 +1,5 @@
 @echo off
-title FruitDrama Dev Server
+title PubMoi Dev Server
 set "PATH=C:\Program Files\nodejs;%PATH%"
 cd /d "%~dp0"
 

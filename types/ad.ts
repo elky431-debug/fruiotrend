@@ -1,12 +1,7 @@
 export type AdTemplate =
   | "living_product"
   | "influencer"
-  | "before_after"
-  | "product_demo"
-  | "lifestyle"
-  | "absurd_problem"
-  | "unboxing"
-  | "testimonial";
+  | "product_demo";
 
 export interface AdTemplateConfig {
   id: AdTemplate;
@@ -16,6 +11,12 @@ export interface AdTemplateConfig {
   bestFor: string[];
   scenes: number;
   hook_style: string;
+}
+
+export interface ProductImageAsset {
+  base64: string;
+  mimeType: string;
+  url: string;
 }
 
 export interface ProductInput {
@@ -28,6 +29,7 @@ export interface ProductInput {
   duration: number;
   images: string[];
   imagesMimeType: string[];
+  packagingImage?: ProductImageAsset | null;
 }
 
 export interface AdCharacter {

@@ -27,25 +27,27 @@ function normalizeImages(
 }
 
 export async function POST(req: NextRequest) {
+  let fallbackDescription = "";
+
   try {
     const { productImages, productDescription } = (await req.json()) as {
       productImages?: ProductImageInput[];
       productDescription?: string;
     };
 
-    const description = productDescription?.trim() || "";
+    fallbackDescription = productDescription?.trim() || "";
     const images = normalizeImages(productImages);
-    const productAnalysis = await analyzeProductImages(images, description);
+    const productAnalysis = await analyzeProductImages(
+      images,
+      fallbackDescription
+    );
 
+    console.log("[ANALYZE-PRODUCT] OK:", productAnalysis.substring(0, 120));
     return NextResponse.json({ productAnalysis });
   } catch (error) {
     console.error("[ANALYZE-PRODUCT]", error);
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error ? error.message : "Erreur analyse produit",
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({
+      productAnalysis: fallbackDescription,
+    });
   }
 }

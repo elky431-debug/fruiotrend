@@ -30,7 +30,7 @@ function cleanup(dir: string) {
 }
 
 async function assembleClipUrlsOnly(clipUrls: string[]) {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "adcreative-clips-"));
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "pubmoi-clips-"));
   const ffmpeg = resolveFfmpegPath();
 
   try {
@@ -134,7 +134,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "adcreative-"));
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "pubmoi-"));
 
   try {
     if (!scenes || scenes.length === 0) {

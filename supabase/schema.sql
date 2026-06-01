@@ -1,4 +1,4 @@
--- FruitDrama.io — Supabase schema v2
+-- PubMoi — Supabase schema v2
 
 create table if not exists users (
   id uuid primary key default gen_random_uuid(),

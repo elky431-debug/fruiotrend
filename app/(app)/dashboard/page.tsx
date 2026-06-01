@@ -32,8 +32,8 @@ export default function DashboardPage() {
   const TEMPLATE_LABELS: Record<string, string> = {
     living_product: "🧸 Produit Vivant",
     influencer: "🧑 Influenceur",
+    product_demo: "🔬 Démo Produit",
     before_after: "🎭 Avant/Après",
-    product_demo: "🔬 Démo",
     lifestyle: "🌍 Lifestyle",
     absurd_problem: "😂 Absurde",
     unboxing: "👑 Unboxing",

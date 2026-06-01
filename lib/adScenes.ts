@@ -32,6 +32,24 @@ export function normalizeAdScript(
   const count = Math.min(Math.max(Number(nScenes) || 1, 1), 3);
   const scenes = (script.scenes || [])
     .slice(0, count)
-    .map((scene, i) => ({ ...scene, number: i + 1 }));
-  return { ...script, nScenes: count, scenes };
+    .map((scene, i) => ({
+      ...scene,
+      number: i + 1,
+      subtitle: scene.subtitle || scene.title || `SCÈNE ${i + 1}`,
+      hook: scene.hook || scene.voiceover || "",
+      character_action: scene.character_action || "",
+    }));
+  return {
+    ...script,
+    nScenes: count,
+    scenes,
+    character: script.character ?? {
+      name: "Produit",
+      type: "produit",
+      description: script.hook || "",
+      outfit: "",
+      personality: "",
+      gemini_character_prompt: "",
+    },
+  };
 }

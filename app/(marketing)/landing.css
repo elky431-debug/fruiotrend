@@ -10,7 +10,7 @@
   position: sticky;
   top: 0;
   z-index: 50;
-  border-bottom: 1px solid rgba(245, 182, 67, 0.12);
+  border-bottom: 1px solid rgba(255, 92, 157, 0.12);
   background: rgba(10, 8, 6, 0.92);
   backdrop-filter: blur(16px);
 }
@@ -73,8 +73,8 @@
   aspect-ratio: 9 / 16;
   overflow: hidden;
   border-radius: 1rem;
-  border: 2px solid rgba(245, 182, 67, 0.35);
-  box-shadow: 0 8px 32px rgba(245, 182, 67, 0.15);
+  border: 2px solid rgba(255, 92, 157, 0.35);
+  box-shadow: 0 8px 32px rgba(255, 92, 157, 0.15);
   background: #1a1612;
 }
 
@@ -95,14 +95,14 @@
   font-weight: 800;
   padding: 3px 8px;
   border-radius: 99px;
-  background: linear-gradient(135deg, #e32b45, #f5b623);
+  background: linear-gradient(135deg, #e32b45, #ff5c9d);
   color: #fff;
   z-index: 2;
 }
 
 .landing-steps-section {
-  border-top: 1px solid rgba(245, 182, 67, 0.12);
-  border-bottom: 1px solid rgba(245, 182, 67, 0.12);
+  border-top: 1px solid rgba(255, 92, 157, 0.12);
+  border-bottom: 1px solid rgba(255, 92, 157, 0.12);
   background: #14100c;
   padding: 4rem 1rem;
 }
@@ -128,7 +128,7 @@
 
 .landing-step-card {
   background: #12100d;
-  border: 1px solid rgba(245, 182, 67, 0.12);
+  border: 1px solid rgba(255, 92, 157, 0.12);
   border-radius: 18px;
   overflow: hidden;
 }
@@ -156,7 +156,7 @@
 .landing-step-label {
   font-size: 0.75rem;
   font-weight: 700;
-  color: #f5b623;
+  color: #ff5c9d;
 }
 
 .landing-step-title {

@@ -17,52 +17,44 @@ const ACCOUNTS = [
 
 export function SocialProofSection() {
   return (
-    <section className="py-20">
-      <div className="mx-auto max-w-6xl px-4 text-center">
-        <h2 className="text-3xl font-extrabold">
+    <section className="landing-social-section">
+      <div className="landing-social-inner">
+        <h2 className="landing-h2">
           Des centaines de comptes utilisent{" "}
-          <span className="text-gradient">AdCreative</span>
+          <span className="text-gradient">PubMoi</span>
         </h2>
-        <p className="mt-4 text-text-secondary">
-          Rejoins la communauté des créateurs qui ont arrêté de jongler entre 5 logiciels.
+        <p className="landing-sub">
+          Rejoins la communauté des créateurs qui ont arrêté de jongler entre 5
+          logiciels.
         </p>
 
-        <div className="mt-12 flex flex-wrap items-center justify-center gap-6">
+        <div className="landing-social-cards">
           {ACCOUNTS.map((acc) => (
-            <div key={acc.handle} className="card-base w-full max-w-sm p-6 text-left">
-              <div className="flex items-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-bg-hover text-xl">
-                  📢
-                </div>
+            <div key={acc.handle} className="card-base landing-social-card">
+              <div className="landing-testimonial-handle">
+                <span className="landing-testimonial-avatar">📢</span>
                 <div>
-                  <p className="font-semibold text-white">{acc.name}</p>
-                  <p className="text-sm text-text-secondary">{acc.handle}</p>
+                  <p style={{ fontWeight: 600 }}>{acc.name}</p>
+                  <p style={{ fontSize: 13, color: "#7a6f64" }}>{acc.handle}</p>
                 </div>
               </div>
-              <div className="mt-4 flex gap-6 text-sm">
+              <div className="landing-social-stats">
                 <div>
-                  <p className="font-bold text-white">{acc.following}</p>
-                  <p className="text-text-muted">Suivis</p>
+                  <strong>{acc.following}</strong>
+                  <span>Suivis</span>
                 </div>
                 <div>
-                  <p className="font-bold text-white">{acc.followers}</p>
-                  <p className="text-text-muted">Followers</p>
+                  <strong>{acc.followers}</strong>
+                  <span>Followers</span>
                 </div>
                 <div>
-                  <p className="font-bold text-white">{acc.likes}</p>
-                  <p className="text-text-muted">J&apos;aime</p>
+                  <strong>{acc.likes}</strong>
+                  <span>J&apos;aime</span>
                 </div>
               </div>
             </div>
           ))}
         </div>
-
-        <button
-          type="button"
-          className="mt-8 inline-flex items-center gap-2 rounded-full border border-border bg-bg-card px-5 py-2 text-sm text-white"
-        >
-          <span>♪</span> TikTok
-        </button>
       </div>
     </section>
   );

@@ -5,19 +5,30 @@ export type ProductImageRef = {
   mimeType?: string;
 };
 
-const VISION_PROMPT = `Describe this product with extreme visual precision for an AI image generator.
-Include:
-1. Exact shape and silhouette
-2. ALL colors with their exact location (main color, accent colors, any rings/stripes/indicators)
-3. Surface finish (matte/glossy/textured)
-4. ALL distinctive visual details (logos, buttons, LEDs, rings, labels, patterns)
-5. Overall dimensions feel (compact/large/slim/bulky)
+const VISION_PROMPT = `You are analyzing a product image to create an exact visual description for an AI image generator.
 
-Be extremely specific. Example: "Black handheld massager gun, T-shaped, matte black finish,
-bright green LED ring at the base of the handle, round massage head on left side,
-grip texture on handle, small power button on front panel"
+Describe this product with EXTREME precision. Focus on:
 
-Respond in English, max 100 words.`;
+1. SHAPE: What is the exact geometric shape? (T-shape, cylinder, rectangle, gun-shape, bottle, etc.)
+   - Describe every part: handle, head, body, attachments
+   - Proportions: which part is longest/widest
+
+2. COLORS: List every color and exactly where it appears
+   - Main body color
+   - Accent colors (rings, buttons, logos, labels)
+   - Any gradients or finishes (matte, glossy, metallic)
+
+3. DISTINCTIVE FEATURES: What makes this product unique visually?
+   - Specific markings, logos, LEDs, rings
+   - Texture patterns
+   - Attachments or accessories visible
+
+4. SIZE FEEL: Does it feel compact/large/slim/bulky?
+
+Format your response as a single paragraph starting with the shape, then colors, then distinctive features.
+Example: "T-shaped massage gun with a perpendicular head on a cylindrical handle, matte black finish, bright green LED ring at the base of the handle, round massage head on the left side..."
+
+Be extremely specific. Max 150 words. English only.`;
 
 export async function analyzeProductImages(
   productImages: ProductImageRef[] | undefined,
@@ -32,7 +43,7 @@ export async function analyzeProductImages(
 
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
-    console.warn("[PRODUCT] OPENAI_API_KEY manquante — description texte utilisée");
+    console.warn("[ANALYZE] OPENAI_API_KEY manquante — description texte utilisée");
     return fallback;
   }
 
@@ -48,7 +59,7 @@ export async function analyzeProductImages(
     const client = new OpenAI({ apiKey });
     const response = await client.chat.completions.create({
       model: "gpt-4o",
-      max_tokens: 300,
+      max_tokens: 400,
       messages: [
         {
           role: "user",
@@ -59,12 +70,12 @@ export async function analyzeProductImages(
 
     const analysis = response.choices[0]?.message?.content?.trim();
     if (analysis) {
-      console.log("[PRODUCT] Analyse GPT-4o:", analysis.substring(0, 120));
+      console.log("[ANALYZE] Analyse produit:", analysis);
       return analysis;
     }
   } catch (err) {
     console.error(
-      "[PRODUCT] Erreur analyse:",
+      "[ANALYZE] Erreur:",
       err instanceof Error ? err.message : err
     );
   }

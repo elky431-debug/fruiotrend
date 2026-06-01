@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { PubMoiLogo } from "@/components/brand/PubMoiLogo";
 
 const NAV = [
   { href: "/", label: "Accueil", icon: "⌂", activeMatch: "__home__" },
@@ -17,13 +18,9 @@ export function Sidebar() {
   return (
     <>
       <aside className="hidden w-[200px] shrink-0 flex-col border-r border-bg-card bg-[#0D0D0D] md:flex">
-        <Link
-          href="/"
-          className="flex items-center gap-2 border-b border-bg-card px-4 py-5 transition hover:opacity-80"
-        >
-          <span className="text-xl">📢</span>
-          <span className="font-bold text-white">AdCreative</span>
-        </Link>
+        <div className="border-b border-bg-card px-4 py-5">
+          <PubMoiLogo href="/" size="md" />
+        </div>
 
         <nav className="flex flex-1 flex-col gap-1 p-3">
           {NAV.map((item) => {

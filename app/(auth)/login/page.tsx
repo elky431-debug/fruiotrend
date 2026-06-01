@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
+import { PubMoiLogo } from "@/components/brand/PubMoiLogo";
 
 export default function LoginPage() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-bg-primary px-4">
-      <Link href="/" className="mb-8 flex items-center gap-2 font-bold text-white">
-        <span className="text-2xl">📢</span> AdCreative
-      </Link>
+      <div className="mb-8">
+        <PubMoiLogo href="/" size="lg" />
+      </div>
       <div className="w-full max-w-md card-base p-8">
         <h1 className="text-2xl font-bold text-white">Se connecter</h1>
         <p className="mt-2 text-sm text-text-secondary">

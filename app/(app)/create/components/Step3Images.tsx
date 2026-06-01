@@ -2,6 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getActiveScenes } from "@/lib/adScenes";
+import {
+  downloadAllWithDelay,
+  downloadDataUrlAsFile,
+  sceneImageFilename,
+} from "@/lib/downloadAsset";
 import type { AdScript, ProductInput } from "@/types/ad";
 
 interface Props {
@@ -38,7 +43,7 @@ export default function Step3Images({
 
   useEffect(() => {
     productAnalysisRef.current = null;
-  }, [product.images, product.description, script.productVisualDescription]);
+  }, [product.images, product.packagingImage, product.description, script.productVisualDescription]);
 
   const productImageRefs = product.images.map((base64, index) => ({
     base64,
@@ -61,25 +66,27 @@ export default function Step3Images({
       return fallback;
     }
 
-    console.log("[STEP3] Analyse produit (GPT-4o Vision)...");
-    const res = await fetch("/api/analyze-product", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        productImages: productImageRefs,
-        productDescription: fallback,
-      }),
-    });
+    console.log("[STEP3] Analyse du produit (GPT-4o Vision)...");
+    try {
+      const res = await fetch("/api/analyze-product", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          productImages: productImageRefs,
+          productDescription: fallback,
+        }),
+      });
 
-    const data = await res.json();
-    if (!res.ok || data.error) {
-      throw new Error(data.error || "Erreur analyse produit");
+      const data = await res.json();
+      const analysis = String(data.productAnalysis || fallback).trim();
+      productAnalysisRef.current = analysis;
+      console.log("[STEP3] Analyse reçue:", analysis);
+      return analysis;
+    } catch (err) {
+      console.warn("[STEP3] Analyse échouée, fallback sur description", err);
+      productAnalysisRef.current = fallback;
+      return fallback;
     }
-
-    const analysis = String(data.productAnalysis || fallback);
-    productAnalysisRef.current = analysis;
-    console.log("[STEP3] Analyse:", analysis);
-    return analysis;
   };
 
   const genImage = async (
@@ -102,6 +109,7 @@ export default function Step3Images({
       console.log(
         `[STEP3] 1 seul appel API — scène ${sceneIndex + 1}/${scenes.length}`
       );
+      console.log("[STEP3] Template envoyé:", product.template);
       const res = await fetch("/api/images", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -115,7 +123,9 @@ export default function Step3Images({
             product.name,
           productAnalysis,
           productImages: productImageRefs,
+          packagingImage: product.packagingImage || null,
           template: product.template,
+          targetAudience: product.targetAudience,
         }),
       });
 
@@ -141,7 +151,15 @@ export default function Step3Images({
   };
 
   const generateAllImages = async () => {
-    if (globalLoading || scenes.length === 0) return;
+    if (globalLoading) return;
+    if (scenes.length === 0) {
+      setErrors((prev) => ({
+        ...prev,
+        _global:
+          "Aucune scène dans le script — retournez à l'étape Script et régénérez.",
+      }));
+      return;
+    }
 
     setGlobal(true);
     setGenStep("analyzing");
@@ -183,6 +201,32 @@ export default function Step3Images({
   };
 
   const allDone = scenes.every((_, i) => images[sceneId(i)]);
+  const hasAnyImage = scenes.some((_, i) => images[sceneId(i)]);
+
+  const downloadSceneImage = (sceneIndex: number) => {
+    const url = images[sceneId(sceneIndex)];
+    if (!url) return;
+    downloadDataUrlAsFile(
+      url,
+      sceneImageFilename(product.name, sceneIndex, url)
+    );
+  };
+
+  const downloadAllImages = async () => {
+    const items = scenes
+      .map((_, i) => {
+        const url = images[sceneId(i)];
+        if (!url) return null;
+        return {
+          dataUrl: url,
+          filename: sceneImageFilename(product.name, i, url),
+        };
+      })
+      .filter((x): x is { dataUrl: string; filename: string } => x !== null);
+
+    if (items.length === 0) return;
+    await downloadAllWithDelay(items);
+  };
 
   const stepLabel: Record<GenStep, string> = {
     idle:
@@ -243,6 +287,18 @@ export default function Step3Images({
           )}
         </button>
 
+        {hasAnyImage && (
+          <button
+            type="button"
+            onClick={() => void downloadAllImages()}
+            disabled={globalLoading}
+            className="btn-sec"
+            style={{ fontSize: 13 }}
+          >
+            ↓ Télécharger tout
+          </button>
+        )}
+
         {allDone && (
           <button
             type="button"
@@ -295,17 +351,41 @@ export default function Step3Images({
                 }}
               >
                 {imageUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={imageUrl}
-                    alt=""
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                      opacity: busy ? 0.4 : 1,
-                    }}
-                  />
+                  <>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={imageUrl}
+                      alt=""
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                        opacity: busy ? 0.4 : 1,
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => downloadSceneImage(i)}
+                      disabled={busy}
+                      title="Télécharger l'image"
+                      style={{
+                        position: "absolute",
+                        top: 8,
+                        right: 8,
+                        padding: "6px 10px",
+                        borderRadius: 8,
+                        border: "1px solid rgba(255,255,255,0.2)",
+                        background: "rgba(10, 8, 6, 0.75)",
+                        backdropFilter: "blur(8px)",
+                        color: "#fff8f2",
+                        fontSize: 11,
+                        fontWeight: 600,
+                        cursor: busy ? "not-allowed" : "pointer",
+                      }}
+                    >
+                      ↓
+                    </button>
+                  </>
                 ) : (
                   <div
                     style={{
@@ -358,15 +438,28 @@ export default function Step3Images({
                   </div>
                 )}
 
-                <button
-                  type="button"
-                  onClick={() => generateSingleImage(i, scene)}
-                  disabled={busy || globalLoading}
-                  className="btn-sec"
-                  style={{ width: "100%", fontSize: 11 }}
-                >
-                  {busy ? "…" : imageUrl ? "🔄 Régénérer" : "Générer"}
-                </button>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button
+                    type="button"
+                    onClick={() => generateSingleImage(i, scene)}
+                    disabled={busy || globalLoading}
+                    className="btn-sec"
+                    style={{ flex: 1, fontSize: 11 }}
+                  >
+                    {busy ? "…" : imageUrl ? "🔄 Régénérer" : "Générer"}
+                  </button>
+                  {imageUrl && (
+                    <button
+                      type="button"
+                      onClick={() => downloadSceneImage(i)}
+                      disabled={busy}
+                      className="btn-sec"
+                      style={{ fontSize: 11, flexShrink: 0 }}
+                    >
+                      Télécharger
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           );

@@ -1,27 +1,28 @@
 import Image from "next/image";
 import Link from "next/link";
+import { LANDING_PREVIEW_IMAGES } from "@/lib/landingPreviews";
 
 const STEPS = [
   {
     step: "ÉTAPE 1",
     title: "Upload ton produit",
     desc: "Nom, description, audience et objectif pub. Ajoute des photos produit pour guider les visuels.",
-    image: "/landing/drama-cuisine.png",
-    alt: "Étape produit",
+    ...LANDING_PREVIEW_IMAGES.influenceur,
+    alt: "Upload produit — influenceur cartoon",
   },
   {
     step: "ÉTAPE 2",
     title: "Script & visuels IA",
     desc: "GPT-4o rédige le script pub FR. Gemini génère personnage cartoon et scènes 9:16 avec ton produit.",
-    image: "/landing/drama-chantier.png",
-    alt: "Script et images",
+    ...LANDING_PREVIEW_IMAGES.produitVivant,
+    alt: "Visuel Produit Vivant généré",
   },
   {
     step: "ÉTAPE 3",
-    title: "Animation Grok + voix IA",
-    desc: "Chaque scène devient une vidéo 10s avec voix off Gemini TTS. Télécharge et publie sur TikTok / Meta.",
-    image: "/landing/drama-rue.png",
-    alt: "Vidéos pub",
+    title: "Vidéo LTX + voix intégrée",
+    desc: "LTX 2.3 Fast anime chaque scène avec audio synchronisé. Assemble et publie sur TikTok / Meta.",
+    ...LANDING_PREVIEW_IMAGES.influenceur,
+    alt: "Vidéo pub influenceur 9:16",
   },
 ];
 
@@ -42,11 +43,11 @@ export function HowItWorksSection() {
             <article key={s.step} className="landing-step-card">
               <div className="landing-step-image">
                 <Image
-                  src={s.image}
+                  src={s.src}
                   alt={s.alt}
                   width={360}
                   height={640}
-                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  className="landing-media-img"
                 />
               </div>
               <div className="landing-step-body">

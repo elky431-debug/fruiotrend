@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import {
+  buildImageSubjectPromptBlock,
+  buildImageTemplatePromptBlock,
+  normalizeImageTemplateKey,
+} from "@/lib/adTemplates";
 import { inferBackground } from "@/lib/inferBackground";
 import { analyzeProductImages } from "@/lib/productAnalysis";
 
@@ -18,6 +23,12 @@ type ProductImageInput =
       mimeType?: string;
       url?: string;
     };
+
+type PackagingImageInput = {
+  base64?: string;
+  mimeType?: string;
+  url?: string;
+} | null;
 
 type SceneInput = {
   visual_description?: string;
@@ -42,7 +53,9 @@ export async function POST(req: NextRequest) {
       productDescription,
       productAnalysis: cachedAnalysis,
       productImages,
+      packagingImage,
       template,
+      targetAudience,
       sceneIndex,
       totalScenes,
     } = body as {
@@ -50,7 +63,9 @@ export async function POST(req: NextRequest) {
       productDescription?: string;
       productAnalysis?: string;
       productImages?: ProductImageInput[];
+      packagingImage?: PackagingImageInput;
       template?: string;
+      targetAudience?: string;
       sceneIndex?: number;
       totalScenes?: number;
     };
@@ -78,15 +93,29 @@ export async function POST(req: NextRequest) {
       cachedAnalysis?.trim() ||
       (await analyzeProductImages(normalizedImages, description));
 
+    const templateKey = normalizeImageTemplateKey(template);
+    console.log(
+      "[IMAGES] Template reçu:",
+      template,
+      "→ normalisé:",
+      templateKey
+    );
+
     const imagePrompt = buildImagePrompt(
       scene || {},
       description,
-      template || "",
-      productAnalysis
+      templateKey,
+      productAnalysis,
+      targetAudience,
+      Boolean(packagingImage?.base64)
     );
-    console.log("[IMAGES] Prompt:", imagePrompt.substring(0, 120));
+    console.log("[IMAGES] Analyse forme:", productAnalysis.substring(0, 120));
 
-    const parts = buildContentParts(normalizedImages, imagePrompt);
+    const parts = buildContentParts(
+      normalizedImages,
+      imagePrompt,
+      packagingImage
+    );
 
     const primaryModel =
       process.env.GEMINI_IMAGE_MODEL || DEFAULT_IMAGE_MODEL;
@@ -165,17 +194,28 @@ function normalizeProductImages(
 
 function buildContentParts(
   productImages: { base64: string; mimeType: string }[],
-  imagePrompt: string
+  imagePrompt: string,
+  packagingImage?: PackagingImageInput
 ): ContentPart[] {
   const parts: ContentPart[] = [];
 
-  for (const img of productImages) {
+  for (const img of productImages.slice(0, 2)) {
     parts.push({
       inlineData: {
         mimeType: img.mimeType,
         data: img.base64,
       },
     });
+  }
+
+  if (packagingImage?.base64) {
+    parts.push({
+      inlineData: {
+        mimeType: packagingImage.mimeType || "image/jpeg",
+        data: packagingImage.base64,
+      },
+    });
+    console.log("[IMAGES] Packaging ajouté comme référence visuelle");
   }
 
   parts.push({ text: imagePrompt });
@@ -216,11 +256,37 @@ async function generateImage(
   return null;
 }
 
+function buildShapeMandatoryBlock(analysis: string): string {
+  return `
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+PRODUCT SHAPE IS MANDATORY — READ THIS FIRST:
+${analysis}
+
+YOU MUST REPRODUCE THIS EXACT SHAPE.
+IF THE PRODUCT IS T-SHAPED → DRAW A T-SHAPE.
+IF THE PRODUCT IS CYLINDRICAL → DRAW A CYLINDER.
+DO NOT INVENT A DIFFERENT SHAPE.
+DO NOT SIMPLIFY THE SHAPE.
+THE SHAPE IN YOUR OUTPUT MUST MATCH THE REFERENCE PHOTO.
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!`;
+}
+
+function buildShapeFinalCheckBlock(analysis: string): string {
+  return `
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+FINAL CHECK: Does your output show the EXACT shape from the reference?
+${analysis}
+If not → START OVER.
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!`;
+}
+
 function buildImagePrompt(
   scene: SceneInput,
   productDescription: string,
-  template: string,
-  productAnalysis: string
+  templateKey: ReturnType<typeof normalizeImageTemplateKey>,
+  productAnalysis: string,
+  targetAudience?: string,
+  hasPackaging?: boolean
 ): string {
   const sceneDesc = scene.visual_description || scene.description || "";
   const analysis =
@@ -228,6 +294,18 @@ function buildImagePrompt(
   const background =
     scene.background?.trim() || inferBackground(productDescription);
   const narrativeRole = scene.narrative_role || "solution";
+
+  const packagingInstruction = hasPackaging
+    ? `
+━━━ PACKAGING HELD BY CHARACTER ━━━
+The product character is holding its packaging in one hand/appendage.
+The packaging image is provided in the reference above — reproduce it EXACTLY:
+- Same colors, same logo, same shape of the package
+- The packaging is clearly visible and readable
+- The character holds it proudly, showing it to the viewer
+- Like the Courtx insole character holding its blue package
+`
+    : "";
 
   const moodByRole: Record<string, string> = {
     problem:
@@ -240,44 +318,58 @@ function buildImagePrompt(
   const mood = moodByRole[narrativeRole] || moodByRole.solution;
   const mouthExpr = scene.mouth_expression || mouthHintForEmotion(scene.emotion);
 
-  return `
-Create a Pixar/DreamWorks 3D CGI animation frame.
+  const templateBlock = buildImageTemplatePromptBlock(
+    templateKey,
+    analysis,
+    sceneDesc,
+    targetAudience
+  );
+  const subjectBlock = buildImageSubjectPromptBlock(templateKey, {
+    emotion: scene.emotion,
+    mouthExpr,
+    productAnalysis: analysis,
+  });
 
-━━━ MANDATORY PIXAR STYLE ━━━
-- Quality level: Pixar "Toy Story 4" — NOT photorealistic, NOT dark cinematic
+  const formatHint =
+    templateKey === "demo-produit"
+      ? "Vertical 9:16 — product fills frame, cinematic close-up, product ~60% of frame height"
+      : templateKey === "influenceur"
+        ? "Vertical 9:16 — influencer holds product, UGC framing, face visible"
+        : "Vertical 9:16 portrait — living product hero center stage, product ~60% of frame height";
+
+  const shapeBlock = buildShapeMandatoryBlock(analysis);
+  const finalCheck = buildShapeFinalCheckBlock(analysis);
+
+  return `${shapeBlock}
+
+Create a Pixar/DreamWorks 3D CGI advertisement image.
+
+━━━ PRODUCT REFERENCE ━━━
+Reference photos are provided above. The product is:
+${analysis}
+
+CRITICAL FIDELITY RULES:
+- IDENTICAL shape — every part, every proportion
+- IDENTICAL colors — main color + ALL accent colors
+- IDENTICAL distinctive details (rings, logos, LEDs, buttons)
+- If unsure about any detail → look at the reference photo again
+- The product must be 100% recognizable to someone who owns it
+
+━━━ TEMPLATE ACTIF : ${templateKey.toUpperCase()} ━━━
+${templateBlock}
+
+${subjectBlock}
+
+${packagingInstruction}
+
+━━━ PIXAR STYLE ━━━
+- Pixar "Toy Story 4" quality 3D CGI — NOT photorealistic, NOT dark cinematic
 - Subsurface scattering on all surfaces
 - Colors: VIBRANT and OVERSATURATED — 40% more vivid than reality
 - Lighting: ${mood}
 - Smooth 3D surfaces with Pixar-quality textures
 - Depth of field bokeh on background elements
-
-━━━ PRODUCT ━━━
-Reference photos provided above show the EXACT product.
-${analysis}
-- IDENTICAL shape, proportions, silhouette, colors, finish
-- Product must be 100% recognizable
-
-━━━ FACE OF THE PRODUCT — EYES + MOUTH ━━━
-The product has a face with TWO elements ONLY:
-1. LARGE expressive Pixar cartoon eyes — highlights, pupils, emotional expression (${scene.emotion || "excited"})
-2. A MOUTH — simple curved cartoon mouth showing emotion: ${mouthExpr}
-   - Happy/excited: big wide smile showing teeth
-   - Determined: confident smirk
-   - Surprised: open "O" mouth
-   - Dramatic: slightly open mouth mid-speech
-
-The face is placed naturally on the front surface of the product.
-Eyes and mouth must look like the product is SPEAKING and ALIVE.
-Like Pixar's Cars — eyes on windshield + mouth on bumper.
-
-NO arms. NO hands. NO legs. NO other body parts.
-ONLY eyes + mouth on the product surface.
-
-━━━ NO BACKGROUND CHARACTERS ━━━
-ONLY the main product character in the scene.
-NO other animated objects with eyes or faces in the background.
-NO secondary characters. The product is the SOLE character.
-Background contains only inanimate objects (furniture, props, decor).
+- NOT flat, NOT cartoon 2D, NOT dark
 
 ━━━ BACKGROUND ━━━
 ${background}
@@ -287,93 +379,11 @@ ${background}
 ━━━ SCENE ━━━
 ${sceneDesc}
 
-━━━ TEMPLATE ━━━
-${buildTemplateInstructions(template, sceneDesc, analysis)}
-
 ━━━ FORMAT ━━━
-Vertical 9:16 portrait — product center stage, ~60% of frame height
+${formatHint}
+
+${finalCheck}
 `;
-}
-
-function buildTemplateInstructions(
-  template: string,
-  sceneDesc: string,
-  productAnalysis: string
-): string {
-  const raw = template?.toLowerCase().replace(/[\s_]/g, "-") || "produit-vivant";
-  const aliases: Record<string, string> = {
-    living_product: "produit-vivant",
-    influencer: "influenceur",
-    before_after: "avant-apres",
-    product_demo: "demo-produit",
-    absurd_problem: "probleme-absurde",
-    testimonial: "temoignages",
-  };
-  const t = aliases[raw] || raw;
-
-  const instructions: Record<string, string> = {
-    "produit-vivant": `
-TEMPLATE — LIVING PRODUCT (Pixar Cars style — eyes + mouth only):
-- The product IS the sole character — expressive eyes AND a speaking mouth on its surface
-- NO arms, NO limbs, NO appendages — original shape 100% preserved
-- Mouth visible and expressive — product looks like it is talking
-- NO other characters or faced objects in the background
-- Product details: ${productAnalysis}`,
-
-    influenceur: `
-TEMPLATE — CARTOON INFLUENCER:
-- Stylized 3D character with Pixar proportions (big head, expressive eyes)
-- Character holds the product prominently — product IDENTICAL to reference
-- Direct eye contact with camera, enthusiastic expression
-- Lifestyle background matching product use case
-- Product details: ${productAnalysis}`,
-
-    "avant-apres": `
-TEMPLATE — BEFORE/AFTER:
-- Dramatic visual contrast — dark gloomy left vs bright vivid right
-- Pixar expressive character showing pain/problem then joy/solution
-- Product prominently featured in the AFTER side
-- Product IDENTICAL to reference photos
-- ${productAnalysis}`,
-
-    "demo-produit": `
-TEMPLATE — PRODUCT DEMO:
-- Cinematic close-up of the product — every Pixar-stylized detail visible
-- Dramatic lighting that makes the product glow and look premium
-- Product IDENTICAL to reference, translated into Pixar 3D aesthetic
-- Clean dramatic background with light rays or glow effects
-- ${productAnalysis}`,
-
-    lifestyle: `
-TEMPLATE — LIFESTYLE:
-- Pixar character using the product naturally in context
-- Warm aspirational environment
-- Product IDENTICAL to reference, clearly visible in use
-- ${productAnalysis}`,
-
-    "probleme-absurde": `
-TEMPLATE — ABSURD PROBLEM:
-- Over-the-top exaggerated problem scene, Pixar humor style
-- Dramatic expressions, exaggerated body language
-- Product appears as the heroic solution — IDENTICAL to reference
-- ${productAnalysis}`,
-
-    unboxing: `
-TEMPLATE — PREMIUM UNBOXING:
-- Dramatic spotlight on product/packaging
-- Product IDENTICAL to reference photos — packaging details perfect
-- Luxury feel with god rays and sparkle effects
-- ${productAnalysis}`,
-
-    temoignages: `
-TEMPLATE — TESTIMONIAL:
-- Pixar character giving enthusiastic testimonial
-- Product IDENTICAL to reference, visible in hands or background
-- Warm trustworthy lighting and composition
-- ${productAnalysis}`,
-  };
-
-  return instructions[t] || instructions["produit-vivant"];
 }
 
 function mouthHintForEmotion(emotion?: string): string {

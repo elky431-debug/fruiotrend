@@ -4,20 +4,20 @@ import { useState } from "react";
 
 const FAQ_ITEMS = [
   {
-    q: "Qu'est-ce qu'AdCreative ?",
+    q: "Qu'est-ce que PubMoi ?",
     a: "Un outil pour créer des publicités dropshipping en format vertical 9:16 : script IA, visuels cartoon avec ton produit, puis vidéos animées prêtes pour TikTok et Meta.",
   },
   {
     q: "Quelles IA sont utilisées ?",
-    a: "GPT-4o pour le script, Gemini pour les images, Grok Aurora pour la vidéo, et Gemini TTS pour la voix off en français.",
+    a: "GPT-4o pour le script, Gemini pour les images, LTX 2.3 Fast (fal.ai) pour la vidéo et la voix intégrée, le tout assemblé en MP4.",
   },
   {
     q: "Ai-je besoin de compétences en montage ?",
-    a: "Non pour la génération. Tu télécharges les scènes et tu peux les assembler sur CapCut ou ton éditeur préféré en quelques minutes.",
+    a: "Non pour la génération. Tu télécharges la pub finale ou les scènes et tu peux les republier telles quelles.",
   },
   {
     q: "Combien de crédits consomme une pub ?",
-    a: "Chaque scène animée consomme des crédits selon ton plan. Le forfait gratuit permet de tester le flux complet.",
+    a: "Chaque scène animée consomme des crédits fal selon ton plan. Le forfait gratuit permet de tester le flux complet.",
   },
 ];
 
@@ -25,22 +25,26 @@ export function FAQSection() {
   const [open, setOpen] = useState<number | null>(null);
 
   return (
-    <section id="faq" className="py-20">
-      <div className="mx-auto max-w-3xl px-4">
-        <h2 className="mb-10 text-center text-3xl font-extrabold">FAQ</h2>
-        <div className="divide-y divide-bg-card border-t border-bg-card">
+    <section id="faq" className="landing-faq-section">
+      <div className="landing-faq-inner">
+        <h2 className="landing-h2" style={{ textAlign: "center", marginBottom: "2.5rem" }}>
+          FAQ
+        </h2>
+        <div>
           {FAQ_ITEMS.map((item, i) => (
-            <div key={i} className="border-b border-bg-card">
+            <div key={i} className="landing-faq-item">
               <button
                 type="button"
                 onClick={() => setOpen(open === i ? null : i)}
-                className="flex w-full items-center justify-between py-5 text-left text-white transition hover:text-accent"
+                className="landing-faq-btn"
               >
-                <span className="pr-4 font-medium">{item.q}</span>
-                <span className="text-2xl text-text-secondary">{open === i ? "−" : "+"}</span>
+                <span>{item.q}</span>
+                <span style={{ color: "#7a6f64", fontSize: "1.5rem" }}>
+                  {open === i ? "−" : "+"}
+                </span>
               </button>
               {open === i && (
-                <p className="pb-5 text-sm text-text-secondary">{item.a}</p>
+                <p className="landing-faq-answer">{item.a}</p>
               )}
             </div>
           ))}

@@ -17,8 +17,7 @@ export default function VoiceSelector({
   const [voices, setVoices] = useState<VoiceOption[]>(VOICE_OPTIONS);
   const [voicesLoading, setVoicesLoading] = useState(true);
   const [filter, setFilter] = useState("");
-  const [loadingVoice, setLoadingVoice] = useState<string | null>(null);
-  const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
+  const [previewLoading, setPreviewLoading] = useState<string | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -42,19 +41,9 @@ export default function VoiceSelector({
 
     return () => {
       cancelled = true;
+      audioRef.current?.pause();
     };
   }, []);
-
-  useEffect(() => {
-    setPreviewUrls({});
-    setPreviewError(null);
-    return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
-    };
-  }, [productCategory]);
 
   const filteredVoices = useMemo(() => {
     const q = filter.trim().toLowerCase();
@@ -64,28 +53,19 @@ export default function VoiceSelector({
         v.id.includes(q) ||
         v.name.toLowerCase().includes(q) ||
         v.description.toLowerCase().includes(q) ||
-        v.gender.includes(q)
+        v.gender.includes(q) ||
+        v.tags.some((t) => t.toLowerCase().includes(q))
     );
   }, [voices, filter]);
 
-  const playAudio = (url: string) => {
-    if (audioRef.current) audioRef.current.pause();
-    const audio = new Audio(url);
-    audioRef.current = audio;
-    void audio.play().catch(() => {});
-  };
-
   const playPreview = async (voiceId: string) => {
+    if (previewLoading) return;
     setPreviewError(null);
-
-    if (previewUrls[voiceId]) {
-      playAudio(previewUrls[voiceId]);
-      return;
-    }
-
-    setLoadingVoice(voiceId);
+    setPreviewLoading(voiceId);
 
     try {
+      audioRef.current?.pause();
+
       const res = await fetch("/api/voice-preview", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -97,21 +77,20 @@ export default function VoiceSelector({
 
       const data = await res.json();
       if (!res.ok || data.error) {
-        setPreviewError(data.error || "Erreur aperçu ElevenLabs");
-        return;
+        throw new Error(data.error || "Erreur aperçu voix");
       }
 
-      if (data.audioBase64) {
-        const url = `data:${data.mimeType || "audio/mp3"};base64,${data.audioBase64}`;
-        setPreviewUrls((prev) => ({ ...prev, [voiceId]: url }));
-        playAudio(url);
-      }
-    } catch (err) {
+      const audio = new Audio(
+        `data:${data.mimeType || "audio/mp3"};base64,${data.audioBase64}`
+      );
+      audioRef.current = audio;
+      await audio.play();
+    } catch (e) {
       setPreviewError(
-        err instanceof Error ? err.message : "Erreur aperçu ElevenLabs"
+        e instanceof Error ? e.message : "Impossible de lire l'aperçu"
       );
     } finally {
-      setLoadingVoice(null);
+      setPreviewLoading(null);
     }
   };
 
@@ -134,17 +113,17 @@ export default function VoiceSelector({
           marginBottom: 4,
         }}
       >
-        🎙️ Voix ElevenLabs v3
+        🎙️ Voix Grok TTS
       </h3>
       <p style={{ color: "var(--text2)", fontSize: 12, marginBottom: 12 }}>
         {voicesLoading
-          ? "Chargement des voix…"
-          : `${voices.length} voix — ▶ pour écouter, puis sélectionne`}
+          ? "Chargement…"
+          : `${voices.length} voix — clique ▶ pour écouter un aperçu (GROK_API_KEY requise)`}
       </p>
 
       <input
         type="search"
-        placeholder="Rechercher une voix (nom, langue, genre)…"
+        placeholder="Rechercher une voix…"
         value={filter}
         onChange={(e) => setFilter(e.target.value)}
         style={{
@@ -161,7 +140,17 @@ export default function VoiceSelector({
       />
 
       {previewError && (
-        <p style={{ color: "#F87171", fontSize: 11, marginBottom: 12 }}>
+        <p
+          role="alert"
+          style={{
+            fontSize: 12,
+            color: "#ff8fa3",
+            marginBottom: 12,
+            padding: "8px 10px",
+            borderRadius: 8,
+            background: "rgba(227, 43, 69, 0.1)",
+          }}
+        >
           {previewError}
         </p>
       )}
@@ -178,9 +167,7 @@ export default function VoiceSelector({
       >
         {filteredVoices.map((voice) => {
           const isSelected = selectedVoice === voice.id;
-          const isLoading = loadingVoice === voice.id;
-          const hasCached = Boolean(previewUrls[voice.id]);
-
+          const isPreviewing = previewLoading === voice.id;
           return (
             <div
               key={voice.id}
@@ -192,10 +179,10 @@ export default function VoiceSelector({
               }}
               style={{
                 background: isSelected
-                  ? "rgba(245, 182, 67, 0.1)"
+                  ? "rgba(255, 92, 157, 0.1)"
                   : "var(--bg3)",
                 border: `1px solid ${
-                  isSelected ? "rgba(245,182,67,0.45)" : "var(--border)"
+                  isSelected ? "rgba(255,92,157,0.45)" : "var(--border)"
                 }`,
                 borderRadius: 12,
                 padding: "12px 14px",
@@ -205,34 +192,22 @@ export default function VoiceSelector({
                 gap: 10,
               }}
             >
-              <button
-                type="button"
-                aria-label={`Écouter ${voice.name}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  void playPreview(voice.id);
-                }}
+              <div
                 style={{
                   width: 32,
                   height: 32,
                   borderRadius: "50%",
-                  background: isLoading
-                    ? "var(--bg4)"
-                    : hasCached
-                      ? "rgba(245,182,67,0.2)"
-                      : "var(--bg4)",
+                  background: "var(--bg4)",
                   border: "1px solid var(--border)",
-                  cursor: "pointer",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  fontSize: 12,
+                  fontSize: 16,
                   flexShrink: 0,
-                  color: "var(--text)",
                 }}
               >
-                {isLoading ? "…" : hasCached ? "🔊" : "▶"}
-              </button>
+                {voice.emoji}
+              </div>
 
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div
@@ -243,7 +218,6 @@ export default function VoiceSelector({
                     marginBottom: 2,
                   }}
                 >
-                  <span style={{ fontSize: 13 }}>{voice.emoji}</span>
                   <span
                     style={{
                       color: isSelected ? "var(--accent-warm)" : "var(--text)",
@@ -253,20 +227,34 @@ export default function VoiceSelector({
                   >
                     {voice.name}
                   </span>
-                  <span
-                    style={{
-                      fontSize: 9,
-                      color: "var(--text3)",
-                      fontFamily: "monospace",
-                    }}
-                  >
-                    {voice.id}
-                  </span>
                 </div>
                 <div style={{ color: "var(--text2)", fontSize: 11 }}>
                   {voice.description}
                 </div>
               </div>
+
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void playPreview(voice.id);
+                }}
+                disabled={Boolean(previewLoading)}
+                title="Écouter un aperçu"
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: "50%",
+                  border: "1px solid var(--border)",
+                  background: "var(--bg4)",
+                  color: "var(--text)",
+                  fontSize: 11,
+                  cursor: previewLoading ? "wait" : "pointer",
+                  flexShrink: 0,
+                }}
+              >
+                {isPreviewing ? "…" : "▶"}
+              </button>
 
               {isSelected && (
                 <span style={{ color: "var(--accent-warm)", fontSize: 14 }}>✓</span>

@@ -12,7 +12,7 @@ const TABS = [
   { num: 1 as const, label: "Produit", api: "" },
   { num: 2 as const, label: "Script", api: "GPT-4o" },
   { num: 3 as const, label: "Visuels", api: "Gemini" },
-  { num: 4 as const, label: "Vidéo", api: "LTX + voix + lip sync" },
+  { num: 4 as const, label: "Vidéo", api: "LTX (vidéo + voix)" },
 ];
 
 export default function CreatorLayout() {
@@ -46,8 +46,15 @@ export default function CreatorLayout() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Erreur script");
 
+      const normalized = normalizeAdScript(data as AdScript, input.nScenes);
+      if (!normalized.scenes?.length) {
+        throw new Error(
+          "Le script est vide. Réessayez ou changez le nombre de scènes."
+        );
+      }
+
       setProduct(input);
-      setScript(normalizeAdScript(data as AdScript, input.nScenes));
+      setScript(normalized);
       setImages({});
       setVideos({});
       setTab(2);

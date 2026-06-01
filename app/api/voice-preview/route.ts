@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  applyEmotionTags,
-  generateElevenLabsSpeech,
-  normalizeElevenVoiceId,
-} from "@/lib/elevenlabsVoice";
-import { DEMO_TEXT } from "@/lib/voices";
+import { generateGrokSpeech, normalizeGrokVoiceId } from "@/lib/grokTts";
 
 export const maxDuration = 30;
+
+const DEMO_TEXTS: Record<string, string> = {
+  beaute: "Ta peau mérite mieux. Je la transforme en 30 jours.",
+  sport: "Tes muscles me connaissent déjà. Je soulage tout.",
+  tech: "La technologie qui change ton quotidien. C'est moi.",
+  default: "Je suis là pour toi. Essaie-moi maintenant.",
+};
 
 export async function POST(req: NextRequest) {
   try {
@@ -15,21 +17,21 @@ export async function POST(req: NextRequest) {
       category?: string;
     };
 
-    if (!process.env.FAL_API_KEY) {
+    if (!process.env.GROK_API_KEY) {
       return NextResponse.json(
-        { error: "FAL_API_KEY manquante" },
+        { error: "GROK_API_KEY manquante" },
         { status: 500 }
       );
     }
 
-    const voice = normalizeElevenVoiceId(voiceName);
-    const demoText = applyEmotionTags(
-      DEMO_TEXT[category || ""] || DEMO_TEXT.default,
-      "excited",
-      "solution"
-    );
+    const demoText = DEMO_TEXTS[category || ""] || DEMO_TEXTS.default;
+    const voice = normalizeGrokVoiceId(voiceName);
 
-    const result = await generateElevenLabsSpeech(demoText, voice);
+    const result = await generateGrokSpeech(demoText, voice, {
+      emotion: "excited",
+      narrativeRole: "solution",
+    });
+
     return NextResponse.json(result);
   } catch (error) {
     console.error("[VOICE-PREVIEW]", error);

@@ -4,6 +4,19 @@ import { getActiveScenes } from "@/lib/adScenes";
 import { getTemplateConfig } from "@/lib/adTemplates";
 import type { AdScript, ProductInput } from "@/types/ad";
 
+function scriptCharacter(script: AdScript, product: ProductInput) {
+  return (
+    script.character ?? {
+      name: product.name,
+      type: "produit",
+      description: script.hook || product.description,
+      outfit: "",
+      personality: "",
+      gemini_character_prompt: "",
+    }
+  );
+}
+
 interface Props {
   script: AdScript;
   product: ProductInput;
@@ -20,6 +33,7 @@ export default function Step2Script({
   onNext,
 }: Props) {
   const scenes = getActiveScenes(product, script);
+  const character = scriptCharacter(script, product);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -50,8 +64,8 @@ export default function Step2Script({
             marginTop: 16,
             padding: "14px 16px",
             borderRadius: 12,
-            background: "rgba(245, 182, 67, 0.08)",
-            border: "1px solid rgba(245, 182, 67, 0.25)",
+            background: "rgba(255, 92, 157, 0.08)",
+            border: "1px solid rgba(255, 92, 157, 0.25)",
           }}
         >
           <div style={{ fontSize: 10, fontWeight: 700, color: "var(--accent-warm)", marginBottom: 6 }}>
@@ -70,9 +84,9 @@ export default function Step2Script({
           Personnage cartoon
         </div>
         <div style={{ fontSize: 13 }}>
-          <strong>{script.character.name}</strong> · {script.character.type}
+          <strong>{character.name}</strong> · {character.type}
           <div style={{ marginTop: 6, fontSize: 12, color: "var(--text2)", lineHeight: 1.5 }}>
-            {script.character.description}
+            {character.description}
           </div>
         </div>
       </section>
