@@ -40,13 +40,21 @@ export type PlanConfig = {
   features: string[];
 };
 
+/** Price IDs Stripe (catalogue PubMoi) — fallback si env absent au build */
+const STRIPE_PRICE_IDS = {
+  starter: "price_1TdYrCADfLUEVNSbD8qEa6tU",
+  pro: "price_1TdYt2ADfLUEVNSbOZY8WDek",
+  business: "price_1TdYu3ADfLUEVNSbnB7zoBuA", // produit Stripe « PubMoi - Max »
+} as const;
+
 export const PLANS: Record<"starter" | "pro" | "business", PlanConfig> = {
   starter: {
     id: "starter",
     name: "Starter",
-    price: 9.99,
+    price: 19.99,
     credits: 60,
-    priceId: process.env.STRIPE_PRICE_STARTER ?? "",
+    priceId:
+      process.env.STRIPE_PRICE_STARTER ?? STRIPE_PRICE_IDS.starter,
     description: "~10 pubs / mois",
     features: [
       "60 crédits / mois",
@@ -61,9 +69,9 @@ export const PLANS: Record<"starter" | "pro" | "business", PlanConfig> = {
   pro: {
     id: "pro",
     name: "Pro",
-    price: 29.99,
+    price: 39.99,
     credits: 200,
-    priceId: process.env.STRIPE_PRICE_PRO ?? "",
+    priceId: process.env.STRIPE_PRICE_PRO ?? STRIPE_PRICE_IDS.pro,
     description: "~33 pubs / mois",
     popular: true,
     features: [
@@ -79,10 +87,11 @@ export const PLANS: Record<"starter" | "pro" | "business", PlanConfig> = {
   },
   business: {
     id: "business",
-    name: "Business",
-    price: 79.99,
+    name: "Max",
+    price: 84.99,
     credits: 700,
-    priceId: process.env.STRIPE_PRICE_BUSINESS ?? "",
+    priceId:
+      process.env.STRIPE_PRICE_BUSINESS ?? STRIPE_PRICE_IDS.business,
     description: "~116 pubs / mois",
     features: [
       "700 crédits / mois",
@@ -91,7 +100,7 @@ export const PLANS: Record<"starter" | "pro" | "business", PlanConfig> = {
       "~43 pubs (3 scènes)",
       "Tout Pro +",
       "Support prioritaire",
-      "API access",
+      "Accès API",
       "Marque blanche",
     ],
   },
