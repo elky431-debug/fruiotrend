@@ -7,8 +7,8 @@ const STEPS = [
     step: "ÉTAPE 1",
     title: "Upload ton produit",
     desc: "Nom, description, audience et objectif pub. Ajoute des photos produit pour guider les visuels.",
-    ...LANDING_PREVIEW_IMAGES.influenceur,
-    alt: "Upload produit — influenceur cartoon",
+    ...LANDING_PREVIEW_IMAGES.demoProduit,
+    alt: "Upload produit — visuel cinématographique",
   },
   {
     step: "ÉTAPE 2",

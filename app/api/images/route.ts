@@ -6,6 +6,7 @@ import {
   normalizeImageTemplateKey,
 } from "@/lib/adTemplates";
 import { inferBackground } from "@/lib/inferBackground";
+import { requireCredits } from "@/lib/apiCredits";
 import { analyzeProductImages } from "@/lib/productAnalysis";
 
 export const maxDuration = 120;
@@ -30,6 +31,12 @@ type PackagingImageInput = {
   url?: string;
 } | null;
 
+type InfluencerImageInput = {
+  base64?: string;
+  mimeType?: string;
+  url?: string;
+} | null;
+
 type SceneInput = {
   visual_description?: string;
   description?: string;
@@ -48,12 +55,18 @@ type ContentPart =
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
+    const regenerate = Boolean((body as { regenerate?: boolean }).regenerate);
+    const creditGuard = await requireCredits(req, "image", { regenerate });
+    if (creditGuard instanceof NextResponse) return creditGuard;
+
     const {
       scene,
       productDescription,
       productAnalysis: cachedAnalysis,
       productImages,
       packagingImage,
+      influencerImage,
+      influencerMode,
       template,
       targetAudience,
       sceneIndex,
@@ -64,6 +77,8 @@ export async function POST(req: NextRequest) {
       productAnalysis?: string;
       productImages?: ProductImageInput[];
       packagingImage?: PackagingImageInput;
+      influencerImage?: InfluencerImageInput;
+      influencerMode?: "ai" | "photo";
       template?: string;
       targetAudience?: string;
       sceneIndex?: number;
@@ -101,20 +116,27 @@ export async function POST(req: NextRequest) {
       templateKey
     );
 
+    const hasInfluencerImage =
+      influencerMode === "photo" && Boolean(influencerImage?.base64);
+
     const imagePrompt = buildImagePrompt(
       scene || {},
       description,
       templateKey,
       productAnalysis,
       targetAudience,
-      Boolean(packagingImage?.base64)
+      Boolean(packagingImage?.base64),
+      templateKey === "influenceur"
+        ? buildInfluencerInstruction(influencerMode, hasInfluencerImage)
+        : ""
     );
     console.log("[IMAGES] Analyse forme:", productAnalysis.substring(0, 120));
 
     const parts = buildContentParts(
       normalizedImages,
       imagePrompt,
-      packagingImage
+      packagingImage,
+      hasInfluencerImage ? influencerImage : null
     );
 
     const primaryModel =
@@ -195,9 +217,20 @@ function normalizeProductImages(
 function buildContentParts(
   productImages: { base64: string; mimeType: string }[],
   imagePrompt: string,
-  packagingImage?: PackagingImageInput
+  packagingImage?: PackagingImageInput,
+  influencerImage?: InfluencerImageInput
 ): ContentPart[] {
   const parts: ContentPart[] = [];
+
+  if (influencerImage?.base64) {
+    parts.push({
+      inlineData: {
+        mimeType: influencerImage.mimeType || "image/jpeg",
+        data: influencerImage.base64,
+      },
+    });
+    console.log("[IMAGES] Photo influenceur ajoutée en référence principale");
+  }
 
   for (const img of productImages.slice(0, 2)) {
     parts.push({
@@ -222,6 +255,62 @@ function buildContentParts(
   return parts;
 }
 
+function buildInfluencerInstruction(
+  influencerMode: "ai" | "photo" | undefined,
+  hasInfluencerImage: boolean
+): string {
+  if (influencerMode === "photo" && hasInfluencerImage) {
+    return `
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+INFLUENCER PHOTO TRANSFORMATION — READ CAREFULLY
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+The FIRST image provided is the real influencer to transform.
+You MUST reproduce this EXACT person in Pixar 3D CGI style.
+
+STEP 1 — STUDY THE REFERENCE PHOTO:
+Look at every detail of the person in the reference photo:
+- Face shape (round, oval, square, heart)
+- Skin tone (exact shade — light, medium, tan, dark, deep)
+- Eye color and shape
+- Hair: exact color (including highlights/ombre), length, texture, style
+- Distinctive features: freckles, beauty marks, jawline, lips shape
+- Body type and proportions
+- Outfit: colors, style, clothing items
+- Accessories: jewelry, necklaces, bracelets, rings — reproduce ALL of them
+
+STEP 2 — TRANSFORM TO PIXAR STYLE (keep person recognizable):
+- Enlarge the eyes slightly (Pixar style) but keep their exact shape and color
+- Slightly stylize proportions (bigger head ratio) but keep the person RECOGNIZABLE
+- Keep the EXACT skin tone — do NOT lighten or darken the skin
+- Keep the EXACT hair color and style
+- Keep ALL accessories and jewelry visible
+- The person's friends and family must look at this and say "that's her/him"
+
+STEP 3 — POSE AND PRODUCT:
+- The character holds the product in their hands, showing it to camera
+- Direct eye contact with viewer — TikTok/UGC energy
+- Confident, enthusiastic expression
+
+FORBIDDEN:
+❌ Do NOT make the skin lighter than the reference
+❌ Do NOT change the hair color
+❌ Do NOT create a generic blonde/brunette character
+❌ Do NOT ignore the accessories
+❌ Do NOT make them unrecognizable
+
+The output MUST look like the same person, just Pixar animated.
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!`;
+  }
+
+  return `
+INFLUENCER CHARACTER — AI GENERATED:
+Create an original stylized 3D Pixar human character.
+Young, energetic, relatable. Large expressive Pixar cartoon eyes.
+Holds the product in their hands, showing it to camera.
+Looks directly at the viewer — TikTok/UGC energy.`;
+}
+
 async function generateImage(
   modelName: string,
   parts: ContentPart[]
@@ -238,8 +327,8 @@ async function generateImage(
     } as never,
   });
 
-  const responseParts =
-    result.response.candidates?.[0]?.content?.parts || [];
+  const candidate = result.response.candidates?.[0];
+  const responseParts = candidate?.content?.parts || [];
 
   for (const part of responseParts) {
     if (part.inlineData?.data) {
@@ -251,6 +340,22 @@ async function generateImage(
         imageUrl: `data:${mimeType};base64,${imageBase64}`,
       };
     }
+  }
+
+  const refusalText = responseParts
+    .map((p) => p.text)
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+  const finishReason = candidate?.finishReason;
+  if (refusalText || finishReason) {
+    console.warn(
+      "[IMAGES] Réponse sans image —",
+      "finishReason:",
+      finishReason,
+      "| texte:",
+      refusalText.slice(0, 200)
+    );
   }
 
   return null;
@@ -286,7 +391,8 @@ function buildImagePrompt(
   templateKey: ReturnType<typeof normalizeImageTemplateKey>,
   productAnalysis: string,
   targetAudience?: string,
-  hasPackaging?: boolean
+  hasPackaging?: boolean,
+  influencerInstruction?: string
 ): string {
   const sceneDesc = scene.visual_description || scene.description || "";
   const analysis =
@@ -357,6 +463,7 @@ CRITICAL FIDELITY RULES:
 
 ━━━ TEMPLATE ACTIF : ${templateKey.toUpperCase()} ━━━
 ${templateBlock}
+${influencerInstruction || ""}
 
 ${subjectBlock}
 

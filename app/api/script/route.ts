@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { NextRequest, NextResponse } from "next/server";
+import { requireCredits } from "@/lib/apiCredits";
 
 export const maxDuration = 60;
 import {
@@ -321,6 +322,9 @@ function buildDefaultCharacter(
 
 export async function POST(req: NextRequest) {
   try {
+    const creditGuard = await requireCredits(req, "script");
+    if (creditGuard instanceof NextResponse) return creditGuard;
+
     const { product } = (await req.json()) as { product: ProductInput };
 
     if (!product?.name?.trim() || !product?.description?.trim()) {

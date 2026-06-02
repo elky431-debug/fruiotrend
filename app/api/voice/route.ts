@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireCredits } from "@/lib/apiCredits";
 import { generateGrokSpeech, normalizeGrokVoiceId } from "@/lib/grokTts";
 
 export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   try {
+    const creditGuard = await requireCredits(req, "voice");
+    if (creditGuard instanceof NextResponse) return creditGuard;
+
     const { text, emotion, voiceName, narrativeRole } = await req.json();
 
     if (!process.env.GROK_API_KEY) {

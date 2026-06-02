@@ -1,81 +1,233 @@
-import Link from "next/link";
-import { Button } from "@/components/ui/Button";
+"use client";
 
-const PLANS = [
-  {
-    name: "Gratuit",
-    price: "0€",
-    credits: "3 crédits",
-    duration: "18s / 24s / 30s",
-    model: "Standard",
-    cta: "Plan actuel",
-    highlight: false,
-  },
-  {
-    name: "Starter",
-    price: "9,99€",
-    credits: "30 crédits/mois",
-    duration: "Jusqu'à 72s",
-    model: "HD · Nano Banana 2",
-    cta: "Choisir Starter",
-    highlight: true,
-  },
-  {
-    name: "Pro",
-    price: "29,99€",
-    credits: "Illimité",
-    duration: "Jusqu'à 120s",
-    model: "Ultra · Nano Banana Pro",
-    cta: "Choisir Pro",
-    highlight: false,
-  },
-];
+import { Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { PLANS } from "@/lib/plans";
 
-export default function CreditsPage() {
+export default function PlansPage() {
   return (
-    <div className="app-page">
-      <div style={{ marginBottom: 32 }}>
-        <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: "-0.03em", marginBottom: 6 }}>
-          Plans
-        </h1>
-        <p style={{ color: "#555", fontSize: 14 }}>
-        Tu as <strong style={{ color: "var(--accent-warm)" }}>12 crédits</strong> restants
-        </p>
-      </div>
+    <Suspense fallback={null}>
+      <PlansContent />
+    </Suspense>
+  );
+}
 
-      <div className="mt-10 grid gap-6 md:grid-cols-3">
-        {PLANS.map((plan) => (
-          <div
-            key={plan.name}
-            className={`card-base flex flex-col p-6 ${
-              plan.highlight ? "border-accent ring-1 ring-accent" : ""
-            }`}
+function PlansContent() {
+  const params = useSearchParams();
+  const isPaywall = params.get("paywall") === "true";
+  const [loading, setLoading] = useState<string | null>(null);
+
+  const handleSubscribe = async (planId: string) => {
+    setLoading(planId);
+    try {
+      const res = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ planId }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        alert(data.error || "Erreur lors du paiement");
+        return;
+      }
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch {
+      alert("Impossible de contacter Stripe");
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  return (
+    <div style={{ maxWidth: 960, margin: "0 auto", padding: "60px 20px" }}>
+      {isPaywall && (
+        <div
+          style={{
+            background: "rgba(232,49,58,0.1)",
+            border: "1px solid rgba(232,49,58,0.3)",
+            borderRadius: 16,
+            padding: "16px 24px",
+            textAlign: "center",
+            marginBottom: 40,
+          }}
+        >
+          <p
+            style={{
+              color: "#E8313A",
+              fontWeight: 700,
+              fontSize: 16,
+              margin: "0 0 4px",
+            }}
           >
-            <h3 className="text-lg font-semibold text-white">{plan.name}</h3>
-            <p className="mt-2 text-3xl font-extrabold text-accent">{plan.price}</p>
-            <p className="text-sm text-text-muted">/mois</p>
-            <ul className="mt-6 flex-1 space-y-2 text-sm text-text-secondary">
-              <li>✓ {plan.credits}</li>
-              <li>✓ {plan.duration}</li>
-              <li>✓ {plan.model}</li>
-              <li>✓ Format 9:16</li>
-            </ul>
-            <Button
-              variant={plan.highlight ? "primary" : "secondary"}
-              fullWidth
-              className="mt-6"
+            🔒 Abonnement requis
+          </p>
+          <p
+            style={{
+              color: "rgba(255,255,255,0.6)",
+              fontSize: 14,
+              margin: 0,
+            }}
+          >
+            Choisissez un plan pour accéder à la création de pubs IA
+          </p>
+        </div>
+      )}
+
+      <h1
+        style={{
+          textAlign: "center",
+          color: "#fff",
+          fontSize: 40,
+          fontWeight: 800,
+          marginBottom: 8,
+        }}
+      >
+        Choisissez votre plan
+      </h1>
+      <p
+        style={{
+          textAlign: "center",
+          color: "rgba(255,255,255,0.5)",
+          marginBottom: 16,
+        }}
+      >
+        1 pub complète (1 scène) = 6 crédits · Script + images inclus dans le
+        coût
+      </p>
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+          gap: 20,
+          marginTop: 40,
+        }}
+      >
+        {Object.values(PLANS).map((plan) => (
+          <div
+            key={plan.id}
+            style={{
+              background: plan.popular
+                ? "rgba(232,49,58,0.08)"
+                : "rgba(255,255,255,0.03)",
+              border: `1px solid ${
+                plan.popular ? "#E8313A" : "rgba(255,255,255,0.08)"
+              }`,
+              borderRadius: 20,
+              padding: 28,
+              position: "relative",
+            }}
+          >
+            {"popular" in plan && plan.popular && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: -14,
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  background: "#E8313A",
+                  color: "#fff",
+                  padding: "4px 20px",
+                  borderRadius: 20,
+                  fontSize: 12,
+                  fontWeight: 700,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                LE PLUS POPULAIRE
+              </div>
+            )}
+
+            <h2
+              style={{
+                color: "#fff",
+                fontSize: 22,
+                fontWeight: 700,
+                marginBottom: 4,
+              }}
             >
-              {plan.cta}
-            </Button>
+              {plan.name}
+            </h2>
+            <div style={{ marginBottom: 4 }}>
+              <span style={{ color: "#fff", fontSize: 40, fontWeight: 800 }}>
+                {plan.price}€
+              </span>
+              <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 14 }}>
+                /mois
+              </span>
+            </div>
+            <div
+              style={{
+                color: "#E8313A",
+                fontWeight: 700,
+                fontSize: 14,
+                marginBottom: 20,
+                padding: "6px 12px",
+                background: "rgba(232,49,58,0.1)",
+                borderRadius: 8,
+                display: "inline-block",
+              }}
+            >
+              {plan.credits} crédits · {plan.description}
+            </div>
+
+            <ul style={{ listStyle: "none", padding: 0, marginBottom: 28 }}>
+              {plan.features.map((f) => (
+                <li
+                  key={f}
+                  style={{
+                    color: "rgba(255,255,255,0.7)",
+                    fontSize: 14,
+                    marginBottom: 10,
+                    display: "flex",
+                    gap: 8,
+                    alignItems: "flex-start",
+                  }}
+                >
+                  <span style={{ color: "#E8313A", flexShrink: 0 }}>✓</span>
+                  {f}
+                </li>
+              ))}
+            </ul>
+
+            <button
+              type="button"
+              onClick={() => handleSubscribe(plan.id)}
+              disabled={loading === plan.id}
+              style={{
+                width: "100%",
+                padding: "14px 0",
+                background: plan.popular ? "#E8313A" : "rgba(255,255,255,0.08)",
+                color: "#fff",
+                border: "none",
+                borderRadius: 12,
+                fontSize: 15,
+                fontWeight: 700,
+                cursor: "pointer",
+                opacity: loading === plan.id ? 0.7 : 1,
+                fontFamily: "inherit",
+              }}
+            >
+              {loading === plan.id
+                ? "Redirection..."
+                : `Commencer avec ${plan.name} →`}
+            </button>
           </div>
         ))}
       </div>
 
-      <p className="mt-8 text-center text-sm text-text-muted">
-        Paiement sécurisé via Stripe ·{" "}
-        <Link href="/settings" className="text-accent hover:underline">
-          Gérer l&apos;abonnement
-        </Link>
+      <p
+        style={{
+          textAlign: "center",
+          color: "rgba(255,255,255,0.3)",
+          fontSize: 13,
+          marginTop: 32,
+        }}
+      >
+        Paiement sécurisé par Stripe · Résiliation à tout moment · Crédits
+        remis à zéro chaque mois
       </p>
     </div>
   );

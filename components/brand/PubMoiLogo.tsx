@@ -9,12 +9,12 @@ type Props = {
 
 /** Logo horizontal (~3:2) — largeur d’affichage prioritaire */
 const LOGO_WIDTHS = {
-  sm: 120,
-  md: 150,
-  lg: 190,
+  sm: 128,
+  md: 164,
+  lg: 210,
 } as const;
 
-const LOGO_ASPECT = 1024 / 682;
+const LOGO_ASPECT = 1236 / 343;
 
 export function PubMoiLogo({
   href = "/",

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { getActiveScenes } from "@/lib/adScenes";
 import { getTemplateConfig } from "@/lib/adTemplates";
 import type { AdScript, ProductInput } from "@/types/ad";
@@ -23,6 +24,7 @@ interface Props {
   onRegenerate: () => void;
   regenerateLoading: boolean;
   onNext: () => void;
+  onCustomScript: (script: AdScript) => void;
 }
 
 export default function Step2Script({
@@ -31,12 +33,148 @@ export default function Step2Script({
   onRegenerate,
   regenerateLoading,
   onNext,
+  onCustomScript,
 }: Props) {
   const scenes = getActiveScenes(product, script);
   const character = scriptCharacter(script, product);
+  const [useCustomScript, setUseCustomScript] = useState(false);
+  const [customVoiceover, setCustomVoiceover] = useState("");
+
+  const wordCount = customVoiceover.split(/\s+/).filter(Boolean).length;
+
+  const applyCustomScript = () => {
+    const text = customVoiceover.trim();
+    if (!text) return;
+    const duration = product.duration || 15;
+    const customScript: AdScript = {
+      title: product.name,
+      hook: text,
+      cta: "",
+      duration: `${duration}s`,
+      productVisualDescription: script.productVisualDescription ?? "",
+      nScenes: 1,
+      scenes: [
+        {
+          number: 1,
+          title: "Scène personnalisée",
+          narrative_role: "solution",
+          background: "",
+          visual_description: "",
+          character_action: "",
+          voiceover: text,
+          voiceover_word_count: wordCount,
+          duration_seconds: duration,
+          mouth_expression: "open mouth speaking",
+          emotion: "excited",
+          subtitle: "",
+          hook: text,
+          gemini_prompt: "",
+          grok_video_prompt:
+            "Cinematic Pixar 3D product advertisement, smooth camera movement, 9:16 vertical",
+        },
+      ],
+      character: script.character,
+    };
+    onCustomScript(customScript);
+  };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <section className="studio-section">
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            cursor: "pointer",
+          }}
+          onClick={() => setUseCustomScript((v) => !v)}
+        >
+          <div
+            style={{
+              width: 40,
+              height: 22,
+              borderRadius: 11,
+              background: useCustomScript
+                ? "var(--accent)"
+                : "rgba(255,255,255,0.1)",
+              position: "relative",
+              transition: "all 0.2s",
+              flexShrink: 0,
+            }}
+          >
+            <div
+              style={{
+                width: 18,
+                height: 18,
+                borderRadius: "50%",
+                background: "#fff",
+                position: "absolute",
+                top: 2,
+                left: useCustomScript ? 20 : 2,
+                transition: "all 0.2s",
+              }}
+            />
+          </div>
+          <div>
+            <p style={{ color: "var(--text)", fontSize: 14, fontWeight: 600 }}>
+              ✍️ Écrire mon propre script
+            </p>
+            <p style={{ color: "var(--text2)", fontSize: 12 }}>
+              Tu choisis exactement ce que dit le produit
+            </p>
+          </div>
+        </div>
+
+        {useCustomScript && (
+          <div style={{ marginTop: 16 }}>
+            <label
+              style={{
+                color: "var(--text2)",
+                fontSize: 12,
+                marginBottom: 8,
+                display: "block",
+              }}
+            >
+              VOICEOVER — ce que dit le produit
+            </label>
+            <textarea
+              value={customVoiceover}
+              onChange={(e) => setCustomVoiceover(e.target.value)}
+              placeholder={`Ex: "Si tu fais du padel et t'as mal aux pieds, tu dois m'acheter. Je vais soulager tes douleurs et éviter les blessures."`}
+              style={{
+                width: "100%",
+                minHeight: 100,
+                background: "rgba(0,0,0,0.3)",
+                border: "1px solid var(--border)",
+                borderRadius: 8,
+                color: "var(--text)",
+                fontSize: 14,
+                padding: 12,
+                resize: "vertical",
+                fontFamily: "inherit",
+                lineHeight: 1.6,
+              }}
+            />
+            <p style={{ color: "var(--text3)", fontSize: 11, marginTop: 8 }}>
+              {wordCount} mots · ~{Math.round(wordCount / 2.3)}s
+            </p>
+            <button
+              type="button"
+              onClick={applyCustomScript}
+              disabled={!customVoiceover.trim()}
+              className="btn-primary"
+              style={{
+                marginTop: 12,
+                opacity: customVoiceover.trim() ? 1 : 0.5,
+              }}
+            >
+              Utiliser ce script →
+            </button>
+          </div>
+        )}
+      </section>
+
       <section className="studio-section">
         <div className="studio-section-head">
           <div className="step-badge">✦</div>

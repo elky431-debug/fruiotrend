@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { PubMoiLogo } from "@/components/brand/PubMoiLogo";
+import { useCredits } from "@/hooks/useCredits";
 
 const NAV = [
   { href: "/dashboard", label: "Mes pubs" },
@@ -10,8 +11,12 @@ const NAV = [
   { href: "/plans", label: "Plans" },
 ];
 
+const LOW_CREDITS_THRESHOLD = 6;
+
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const path = usePathname();
+  const { credits } = useCredits();
+  const lowCredits = credits !== null && credits < LOW_CREDITS_THRESHOLD;
 
   return (
     <div className="app-shell">
@@ -82,20 +87,29 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </nav>
 
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div
+            <Link
+              href="/plans"
+              title="Voir les plans et recharger"
               style={{
                 display: "flex",
                 alignItems: "center",
                 gap: 6,
-                background:
-                  "linear-gradient(135deg, #ff6fae 0%, #ff3d6e 50%, #e32b45 100%)",
-                border: "1px solid rgba(255, 111, 174, 0.45)",
+                textDecoration: "none",
+                background: lowCredits
+                  ? "rgba(232, 49, 58, 0.18)"
+                  : "linear-gradient(135deg, #ff6fae 0%, #ff3d6e 50%, #e32b45 100%)",
+                border: lowCredits
+                  ? "1px solid rgba(232, 49, 58, 0.6)"
+                  : "1px solid rgba(255, 111, 174, 0.45)",
                 borderRadius: 99,
                 padding: "6px 14px",
                 fontSize: 12,
                 color: "#fff",
                 fontWeight: 700,
-                boxShadow: "0 4px 16px rgba(255, 61, 110, 0.35)",
+                boxShadow: lowCredits
+                  ? "none"
+                  : "0 4px 16px rgba(255, 61, 110, 0.35)",
+                cursor: "pointer",
               }}
             >
               <span
@@ -107,8 +121,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   boxShadow: "0 0 8px rgba(255,255,255,0.8)",
                 }}
               />
-              12 crédits
-            </div>
+              {credits !== null
+                ? `${credits} crédit${credits > 1 ? "s" : ""}`
+                : "…"}
+              {lowCredits && (
+                <span style={{ fontWeight: 600, opacity: 0.85 }}>
+                  · Recharger
+                </span>
+              )}
+            </Link>
             <Link
               href="/settings"
               style={{

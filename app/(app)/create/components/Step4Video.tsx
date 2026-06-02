@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { getActiveScenes } from "@/lib/adScenes";
+import { CREDIT_COSTS, videoStepCreditTotal } from "@/lib/plans";
 import {
   buildLtxVoiceStyleHint,
   resolveVoiceDemoCategory,
@@ -124,9 +125,18 @@ async function generateSceneVideoFast(
     });
 
     const data = await res.json().catch(() => ({}));
+    if (res.status === 402) {
+      window.dispatchEvent(new Event("credits-updated"));
+      throw new Error(
+        data.error ||
+          `Crédits insuffisants (${data.required} requis, ${data.remaining} restants)`
+      );
+    }
     if (!res.ok || data.error) {
       throw new Error(data.error || "Échec génération vidéo");
     }
+
+    window.dispatchEvent(new Event("credits-updated"));
 
     callbacks?.onPoll?.(100);
     console.log("[STEP4] Vidéo OK en", data.durationMs || Date.now() - started, "ms");
@@ -156,8 +166,11 @@ export default function Step4Video({
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [savedOk, setSavedOk] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const [audios, setAudios] = useState<Record<number, AudioAsset>>({});
   const [selectedVoice, setSelectedVoice] = useState("eve");
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [userCredits, setUserCredits] = useState<number | null>(null);
 
   const scenes = useMemo(
     () => getActiveScenes(product, script),
@@ -167,6 +180,22 @@ export default function Step4Video({
 
   const hasAllImages = scenes.every((_, i) => images[sceneImageId(i)]);
   const voiceDemoCategory = resolveVoiceDemoCategory(product);
+
+  const nScenes = scenes.length;
+  const costPerScene =
+    CREDIT_COSTS.video + CREDIT_COSTS.voice + CREDIT_COSTS.lipsync;
+  const videoCost = videoStepCreditTotal(nScenes);
+
+  useEffect(() => {
+    void fetch("/api/credits")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data && typeof data.credits === "number") {
+          setUserCredits(data.credits);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const generateAndAssemble = async (voiceName: string) => {
     setStep("animating");
@@ -307,16 +336,19 @@ export default function Step4Video({
       setFinalVideo(dataUrl);
       setStep("done");
       setProgress(100);
+      // Enregistrement automatique dans « Mes pubs » dès que la vidéo est prête.
+      void persistAd(dataUrl);
     } catch (error) {
       setError(error instanceof Error ? error.message : "Erreur assemblage");
       setStep("error");
     }
   };
 
-  const saveToDashboard = async () => {
-    if (!finalVideo) return;
+  const persistAd = async (finalVideoUrl: string) => {
+    if (!finalVideoUrl || savedOk) return;
 
     setSaving(true);
+    setSaveError("");
     try {
       const scenesData = scenes.map((scene, i) => ({
         number: scene.number,
@@ -341,7 +373,7 @@ export default function Step4Video({
           template: product.template,
           script,
           scenes: scenesData,
-          finalVideoUrl: finalVideo,
+          finalVideoUrl,
           productImages: product.images,
           productImagesMimeType: product.imagesMimeType,
         }),
@@ -355,10 +387,15 @@ export default function Step4Video({
       setSavedOk(true);
       onSaved();
     } catch (e) {
+      setSaveError(e instanceof Error ? e.message : "Échec de la sauvegarde");
       console.error(e);
     } finally {
       setSaving(false);
     }
+  };
+
+  const saveToDashboard = () => {
+    if (finalVideo) void persistAd(finalVideo);
   };
 
   if (step === "idle") {
@@ -462,7 +499,7 @@ export default function Step4Video({
 
         <button
           type="button"
-          onClick={() => generateAndAssemble(selectedVoice)}
+          onClick={() => setShowConfirm(true)}
           disabled={!hasAllImages}
           style={{
             padding: "14px 32px",
@@ -480,6 +517,125 @@ export default function Step4Video({
         >
           🎬 Générer la vidéo finale
         </button>
+
+        {showConfirm && (
+          <div
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(0,0,0,0.8)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 100,
+              padding: 20,
+            }}
+          >
+            <div
+              style={{
+                background: "#111",
+                border: "1px solid rgba(255,255,255,0.1)",
+                borderRadius: 20,
+                padding: 32,
+                maxWidth: 400,
+                width: "100%",
+                textAlign: "center",
+              }}
+            >
+              <div style={{ fontSize: 48, marginBottom: 16 }}>🎬</div>
+              <h3
+                style={{
+                  color: "#fff",
+                  fontSize: 20,
+                  fontWeight: 700,
+                  marginBottom: 8,
+                }}
+              >
+                Générer la vidéo finale
+              </h3>
+              <p style={{ color: "rgba(255,255,255,0.5)", marginBottom: 20 }}>
+                {nScenes} scène{nScenes > 1 ? "s" : ""} × {costPerScene} crédits
+                (vidéo + voix + lip sync)
+              </p>
+              <div
+                style={{
+                  background: "rgba(232,49,58,0.1)",
+                  border: "1px solid rgba(232,49,58,0.3)",
+                  borderRadius: 12,
+                  padding: 16,
+                  marginBottom: 24,
+                }}
+              >
+                <p
+                  style={{
+                    color: "#E8313A",
+                    fontSize: 28,
+                    fontWeight: 800,
+                    margin: 0,
+                  }}
+                >
+                  {videoCost} crédits
+                </p>
+                <p
+                  style={{
+                    color: "rgba(255,255,255,0.5)",
+                    fontSize: 13,
+                    marginTop: 8,
+                  }}
+                >
+                  {userCredits !== null
+                    ? `Il vous restera ${Math.max(0, userCredits - videoCost)} crédits`
+                    : "Solde en cours de chargement…"}
+                </p>
+              </div>
+              <div style={{ display: "flex", gap: 12 }}>
+                <button
+                  type="button"
+                  onClick={() => setShowConfirm(false)}
+                  style={{
+                    flex: 1,
+                    padding: "12px 0",
+                    background: "rgba(255,255,255,0.08)",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: 10,
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                  }}
+                >
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowConfirm(false);
+                    void generateAndAssemble(selectedVoice);
+                  }}
+                  disabled={
+                    userCredits !== null && userCredits < videoCost
+                  }
+                  style={{
+                    flex: 1,
+                    padding: "12px 0",
+                    background: "#E8313A",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: 10,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                    opacity:
+                      userCredits !== null && userCredits < videoCost
+                        ? 0.5
+                        : 1,
+                  }}
+                >
+                  Confirmer
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -611,6 +767,39 @@ export default function Step4Video({
 
       <div
         style={{
+          fontSize: 12.5,
+          fontWeight: 600,
+          padding: "7px 14px",
+          borderRadius: 99,
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 7,
+          background: saveError
+            ? "rgba(248,113,113,0.12)"
+            : savedOk
+              ? "rgba(34,197,94,0.12)"
+              : "var(--bg2)",
+          border: `1px solid ${
+            saveError
+              ? "rgba(248,113,113,0.35)"
+              : savedOk
+                ? "rgba(34,197,94,0.3)"
+                : "var(--border)"
+          }`,
+          color: saveError ? "#fca5a5" : savedOk ? "#86efac" : "var(--text2)",
+        }}
+      >
+        {saveError
+          ? `⚠️ Échec de l'enregistrement — ${saveError}`
+          : savedOk
+            ? "✓ Enregistrée automatiquement dans Mes pubs"
+            : saving
+              ? "💾 Enregistrement dans Mes pubs…"
+              : "💾 Enregistrement…"}
+      </div>
+
+      <div
+        style={{
           width: "100%",
           maxWidth: 320,
           borderRadius: 16,
@@ -672,24 +861,26 @@ export default function Step4Video({
           ↓ Télécharger MP4
         </a>
 
-        <button
-          type="button"
-          onClick={saveToDashboard}
-          disabled={saving || savedOk}
-          style={{
-            padding: "12px 20px",
-            borderRadius: 12,
-            border: "1px solid var(--border)",
-            background: savedOk ? "#22c55e" : "var(--bg2)",
-            color: savedOk ? "#fff" : "var(--text2)",
-            fontSize: 13,
-            fontWeight: 600,
-            cursor: saving || savedOk ? "not-allowed" : "pointer",
-            fontFamily: "Inter, sans-serif",
-          }}
-        >
-          {savedOk ? "✓ Sauvegardée" : saving ? "..." : "💾 Sauvegarder dans Mes pubs"}
-        </button>
+        {!savedOk && (
+          <button
+            type="button"
+            onClick={saveToDashboard}
+            disabled={saving}
+            style={{
+              padding: "12px 20px",
+              borderRadius: 12,
+              border: "1px solid var(--border)",
+              background: "var(--bg2)",
+              color: "var(--text2)",
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: saving ? "not-allowed" : "pointer",
+              fontFamily: "Inter, sans-serif",
+            }}
+          >
+            {saving ? "..." : saveError ? "↻ Réessayer l'enregistrement" : "💾 Enregistrer maintenant"}
+          </button>
+        )}
 
         <button
           type="button"

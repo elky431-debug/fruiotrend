@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireCredits } from "@/lib/apiCredits";
 import { extractVideoUrl } from "@/lib/klingFal";
 import {
   LIPSYNC_QUEUE,
@@ -27,6 +28,9 @@ export async function POST(req: NextRequest) {
   let fallbackVideoUrl = "";
 
   try {
+    const creditGuard = await requireCredits(req, "lipsync");
+    if (creditGuard instanceof NextResponse) return creditGuard;
+
     const { videoUrl, audioBase64, audioUrl } = await req.json();
     fallbackVideoUrl = videoUrl || "";
 

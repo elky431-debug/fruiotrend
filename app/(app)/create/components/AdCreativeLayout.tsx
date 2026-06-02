@@ -44,7 +44,15 @@ export default function CreatorLayout() {
         body: JSON.stringify({ product: input }),
       });
       const data = await res.json();
+      if (res.status === 402) {
+        window.dispatchEvent(new Event("credits-updated"));
+        throw new Error(
+          data.error ||
+            `Crédits insuffisants (${data.required} requis, ${data.remaining} restants)`
+        );
+      }
       if (!res.ok) throw new Error(data.error || "Erreur script");
+      window.dispatchEvent(new Event("credits-updated"));
 
       const normalized = normalizeAdScript(data as AdScript, input.nScenes);
       if (!normalized.scenes?.length) {
@@ -225,6 +233,11 @@ export default function CreatorLayout() {
           onRegenerate={() => generateScript(product)}
           regenerateLoading={scriptLoading}
           onNext={() => setTab(3)}
+          onCustomScript={(custom) => {
+            setScript(normalizeAdScript(custom, 1));
+            setImages({});
+            setVideos({});
+          }}
         />
       )}
 

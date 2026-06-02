@@ -124,12 +124,28 @@ export default function Step3Images({
           productAnalysis,
           productImages: productImageRefs,
           packagingImage: product.packagingImage || null,
+          influencerImage:
+            product.influencerMode === "photo"
+              ? product.influencerImage || null
+              : null,
+          influencerMode: product.influencerMode || "ai",
           template: product.template,
           targetAudience: product.targetAudience,
+          regenerate: Boolean(images[id]),
         }),
       });
 
       const data = await res.json();
+      if (res.status === 402) {
+        setErrors((prev) => ({
+          ...prev,
+          [id]:
+            data.error ||
+            `Crédits insuffisants (${data.required} requis, ${data.remaining} restants)`,
+        }));
+        window.dispatchEvent(new Event("credits-updated"));
+        return;
+      }
       if (!res.ok || data.error) {
         setErrors((prev) => ({
           ...prev,
@@ -139,6 +155,7 @@ export default function Step3Images({
       }
 
       onImageGenerated(id, data.imageUrl || data.url);
+      window.dispatchEvent(new Event("credits-updated"));
     } catch (e) {
       setErrors((prev) => ({
         ...prev,

@@ -10,7 +10,9 @@ export default function RegisterPage() {
       </div>
       <div className="w-full max-w-md card-base p-8">
         <h1 className="text-2xl font-bold text-white">Créer un compte</h1>
-        <p className="mt-2 text-sm text-text-secondary">3 crédits gratuits à l&apos;inscription</p>
+        <p className="mt-2 text-sm text-text-secondary">
+          Choisis un plan pour commencer à créer tes pubs
+        </p>
         <div className="mt-8 space-y-3">
           <input
             type="email"

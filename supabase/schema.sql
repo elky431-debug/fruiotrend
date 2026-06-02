@@ -3,8 +3,8 @@
 create table if not exists users (
   id uuid primary key default gen_random_uuid(),
   email text unique not null,
-  credits integer not null default 3,
-  plan text not null default 'free' check (plan in ('free', 'starter', 'pro')),
+  credits integer not null default 0,
+  plan text default null check (plan is null or plan in ('starter', 'pro', 'business')),
   stripe_customer_id text,
   created_at timestamptz not null default now()
 );

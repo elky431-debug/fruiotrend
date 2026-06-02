@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireCredits, requireCreditsMulti } from "@/lib/apiCredits";
 import { usesHumanPresenter } from "@/lib/adTemplates";
 import type { AdTemplate } from "@/types/ad";
 import {
@@ -14,6 +15,14 @@ export const maxDuration = 300;
 
 export async function POST(req: NextRequest) {
   try {
+    const body = await req.json();
+    const regenerate = Boolean((body as { regenerate?: boolean }).regenerate);
+
+    const creditGuard = regenerate
+      ? await requireCredits(req, "video", { regenerate: true })
+      : await requireCreditsMulti(req, ["video", "voice", "lipsync"]);
+    if (creditGuard instanceof NextResponse) return creditGuard;
+
     const {
       imageUrl,
       imageBase64,
@@ -23,7 +32,7 @@ export async function POST(req: NextRequest) {
       voiceover,
       voiceStyle,
       template,
-    } = await req.json();
+    } = body;
     const apiKey = process.env.FAL_API_KEY;
 
     if (!apiKey) {

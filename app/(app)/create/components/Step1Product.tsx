@@ -19,6 +19,33 @@ const AD_GOALS = [
   "Viral / Partage",
 ];
 
+const TEMPLATE_MEDIA: Record<string, string> = {
+  living_product: "/landing/pubmoi-produit-vivant.png",
+  influencer: "/landing/pubmoi-influenceur.png",
+  product_demo: "/landing/pubmoi-demo-produit.png",
+};
+
+function Reveal({
+  children,
+  delay = 0,
+  className,
+  style,
+}: {
+  children: React.ReactNode;
+  delay?: number;
+  className?: string;
+  style?: React.CSSProperties;
+}) {
+  return (
+    <div
+      className={`reveal-item${className ? ` ${className}` : ""}`}
+      style={{ animationDelay: `${delay}ms`, ...style }}
+    >
+      {children}
+    </div>
+  );
+}
+
 const AUDIENCES = [
   "Femmes 18-35 ans",
   "Hommes 18-35 ans",
@@ -84,12 +111,20 @@ export default function Step1Product({ onNext, loading, initial }: Props) {
   );
   const [packagingUploading, setPackagingUploading] = useState(false);
   const [packagingError, setPackagingError] = useState<string | null>(null);
+  const [influencerMode, setInfluencerMode] = useState<"ai" | "photo">(
+    initial?.influencerMode ?? "ai"
+  );
+  const [influencerImage, setInfluencerImage] = useState<
+    ProductInput["influencerImage"]
+  >(initial?.influencerImage ?? null);
+  const [influencerUploading, setInfluencerUploading] = useState(false);
+  const [influencerError, setInfluencerError] = useState<string | null>(null);
   const fileInputId = useId();
   const packagingInputId = useId();
+  const influencerInputId = useId();
   const imagesRef = useRef<string[]>(images);
   const mimeRef = useRef<string[]>(mimeTypes);
   const previewsRef = useRef<string[]>(previews);
-
   useEffect(() => {
     imagesRef.current = images;
     mimeRef.current = mimeTypes;
@@ -106,6 +141,8 @@ export default function Step1Product({ onNext, loading, initial }: Props) {
     setMimeTypes((initial.imagesMimeType ?? []).slice(0, valid.length));
     setPreviews(previewsFromImages(valid, initial.imagesMimeType));
     setPackagingImage(initial.packagingImage ?? null);
+    setInfluencerMode(initial.influencerMode ?? "ai");
+    setInfluencerImage(initial.influencerImage ?? null);
   }, [initial]);
 
   const selectTemplate = (id: AdTemplate) => {
@@ -242,6 +279,30 @@ export default function Step1Product({ onNext, loading, initial }: Props) {
     setPackagingError(null);
   };
 
+  const handleInfluencerUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = e.target.files?.[0];
+    const input = e.target;
+    if (!file) return;
+
+    setInfluencerUploading(true);
+    setInfluencerError(null);
+
+    try {
+      const { base64, mimeType, previewUrl } =
+        await processProductImageFile(file);
+      setInfluencerImage({ base64, mimeType, url: previewUrl });
+    } catch (err) {
+      setInfluencerError(
+        err instanceof Error ? err.message : "Impossible d'ajouter la photo."
+      );
+    } finally {
+      setInfluencerUploading(false);
+      input.value = "";
+    }
+  };
+
   const canContinue =
     Boolean(productName.trim()) &&
     Boolean(description.trim()) &&
@@ -262,6 +323,11 @@ export default function Step1Product({ onNext, loading, initial }: Props) {
       images,
       imagesMimeType: mimeTypes,
       packagingImage: packagingImage ?? null,
+      influencerMode: template === "influencer" ? influencerMode : undefined,
+      influencerImage:
+        template === "influencer" && influencerMode === "photo"
+          ? influencerImage ?? null
+          : null,
     });
   };
 
@@ -269,7 +335,34 @@ export default function Step1Product({ onNext, loading, initial }: Props) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <section className="studio-section">
+      <Reveal delay={0}>
+        <div className="create-hero">
+          <div className="create-hero-text">
+            <div
+              style={{
+                fontSize: 18,
+                fontWeight: 800,
+                letterSpacing: "-0.02em",
+                marginBottom: 4,
+              }}
+            >
+              Transforme ton produit en pub 3D
+            </div>
+            <div style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.5 }}>
+              Ajoute tes photos, choisis un style, et l&apos;IA génère une pub
+              cinématographique prête à poster.
+            </div>
+          </div>
+          <div className="create-hero-thumbs" aria-hidden="true">
+            {Object.values(TEMPLATE_MEDIA).map((src) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img key={src} src={src} alt="" className="create-hero-thumb" />
+            ))}
+          </div>
+        </div>
+      </Reveal>
+
+      <section className="studio-section reveal-item" style={{ animationDelay: "90ms" }}>
         <div className="studio-section-head">
           <div className="step-badge">1</div>
           <div>
@@ -562,12 +655,12 @@ export default function Step1Product({ onNext, loading, initial }: Props) {
         </div>
       </section>
 
-      <section className="studio-section">
+      <section className="studio-section reveal-item" style={{ animationDelay: "170ms" }}>
         <div className="step-title" style={{ marginBottom: 12 }}>
           Description du produit
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <div>
+          <Reveal delay={230}>
             <label className="field-label">Nom</label>
             <input
               className="field-input"
@@ -575,8 +668,8 @@ export default function Step1Product({ onNext, loading, initial }: Props) {
               onChange={(e) => setProductName(e.target.value)}
               placeholder="Ceinture de massage chauffante"
             />
-          </div>
-          <div>
+          </Reveal>
+          <Reveal delay={290}>
             <label className="field-label">Description et bénéfices</label>
             <textarea
               className="field-input"
@@ -585,11 +678,11 @@ export default function Step1Product({ onNext, loading, initial }: Props) {
               rows={4}
               placeholder="Soulage les douleurs lombaires en 15 min..."
             />
-          </div>
+          </Reveal>
         </div>
       </section>
 
-      <section className="studio-section">
+      <section className="studio-section reveal-item" style={{ animationDelay: "260ms" }}>
         <div className="step-title" style={{ marginBottom: 12 }}>
           Paramètres de la pub
         </div>
@@ -601,91 +694,261 @@ export default function Step1Product({ onNext, loading, initial }: Props) {
           >
             Format de pub
           </label>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-              gap: 8,
-            }}
-          >
-            {AD_TEMPLATES.map((t) => (
+          <div className="tpl-grid">
+            {AD_TEMPLATES.map((t, i) => (
               <button
                 key={t.id}
                 type="button"
                 onClick={() => selectTemplate(t.id)}
-                style={{
-                  padding: 14,
-                  borderRadius: 12,
-                  cursor: "pointer",
-                  textAlign: "left",
-                  border: `1px solid ${template === t.id ? "rgba(227, 43, 69, 0.45)" : "var(--border)"}`,
-                  background:
-                    template === t.id
-                      ? "rgba(227, 43, 69, 0.08)"
-                      : "var(--bg2)",
-                  transition: "all 0.15s",
-                  color: "inherit",
-                }}
+                className={`tpl-card reveal-item${template === t.id ? " is-active" : ""}`}
+                style={{ animationDelay: `${320 + i * 70}ms` }}
               >
-                <div style={{ fontSize: 20, marginBottom: 6 }}>{t.emoji}</div>
-                <div
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 700,
-                    color: template === t.id ? "var(--accent)" : "var(--text)",
-                    marginBottom: 3,
-                  }}
-                >
-                  {t.name}
+                <div className="tpl-card-media">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={TEMPLATE_MEDIA[t.id]} alt={t.name} />
+                  <span className="tpl-card-emoji">{t.emoji}</span>
+                  <span className="tpl-card-check">✓</span>
                 </div>
-                <div
-                  style={{
-                    fontSize: 10,
-                    color: "var(--text2)",
-                    lineHeight: 1.4,
-                  }}
-                >
-                  {t.description}
-                </div>
-                <div
-                  style={{
-                    marginTop: 6,
-                    display: "flex",
-                    flexWrap: "wrap",
-                    gap: 3,
-                  }}
-                >
-                  {t.bestFor.slice(0, 3).map((tag) => (
-                    <span
-                      key={tag}
-                      style={{
-                        fontSize: 9,
-                        padding: "1px 6px",
-                        borderRadius: 99,
-                        background: "var(--bg3)",
-                        color: "var(--text3)",
-                        border: "1px solid var(--border)",
-                      }}
-                    >
-                      {tag}
-                    </span>
-                  ))}
+                <div className="tpl-card-body">
+                  <div
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 700,
+                      color: template === t.id ? "var(--accent)" : "var(--text)",
+                      marginBottom: 4,
+                    }}
+                  >
+                    {t.name}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 10,
+                      color: "var(--text2)",
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    {t.description}
+                  </div>
+                  <div
+                    style={{
+                      marginTop: 8,
+                      display: "flex",
+                      flexWrap: "wrap",
+                      gap: 3,
+                    }}
+                  >
+                    {t.bestFor.slice(0, 3).map((tag) => (
+                      <span
+                        key={tag}
+                        style={{
+                          fontSize: 9,
+                          padding: "1px 6px",
+                          borderRadius: 99,
+                          background: "var(--bg3)",
+                          color: "var(--text3)",
+                          border: "1px solid var(--border)",
+                        }}
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               </button>
             ))}
           </div>
-          <p
-            style={{
-              marginTop: 10,
-              fontSize: 11,
-              color: "var(--text2)",
-            }}
-          >
-            Recommandé: {selectedMeta.scenes} scènes · {selectedMeta.hook_style}
-          </p>
+
+          <div className="tpl-preview" key={template}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={TEMPLATE_MEDIA[template]} alt={selectedMeta.name} />
+            <div>
+              <div
+                style={{
+                  fontSize: 13,
+                  fontWeight: 700,
+                  color: "var(--accent-warm)",
+                  marginBottom: 4,
+                }}
+              >
+                {selectedMeta.emoji} {selectedMeta.name}
+              </div>
+              <div
+                style={{
+                  fontSize: 12,
+                  color: "var(--text2)",
+                  lineHeight: 1.5,
+                }}
+              >
+                {selectedMeta.description}
+              </div>
+              <div
+                style={{
+                  marginTop: 6,
+                  fontSize: 11,
+                  color: "var(--text3)",
+                }}
+              >
+                Recommandé : {selectedMeta.scenes} scènes ·{" "}
+                {selectedMeta.hook_style}
+              </div>
+            </div>
+          </div>
+
+          {template === "influencer" && (
+            <div
+              style={{
+                background: "rgba(255,255,255,0.03)",
+                border: "1px dashed var(--border)",
+                borderRadius: 12,
+                padding: 16,
+                marginTop: 16,
+              }}
+            >
+              <p
+                style={{
+                  color: "var(--text)",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  marginBottom: 4,
+                }}
+              >
+                🧑‍🎤 Personnage influenceur
+              </p>
+              <p
+                style={{
+                  color: "var(--text2)",
+                  fontSize: 12,
+                  marginBottom: 12,
+                }}
+              >
+                L&apos;IA crée un personnage Pixar ou utilise ta photo
+              </p>
+
+              <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+                {(
+                  [
+                    { mode: "ai", label: "🤖 Généré par l'IA" },
+                    { mode: "photo", label: "📸 Envoyer une photo" },
+                  ] as const
+                ).map((opt) => (
+                  <button
+                    key={opt.mode}
+                    type="button"
+                    onClick={() => setInfluencerMode(opt.mode)}
+                    style={{
+                      padding: "8px 16px",
+                      borderRadius: 8,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      border: "none",
+                      fontFamily: "inherit",
+                      background:
+                        influencerMode === opt.mode
+                          ? "var(--accent)"
+                          : "rgba(255,255,255,0.08)",
+                      color: "#fff",
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+
+              {influencerMode === "photo" &&
+                (influencerImage ? (
+                  <div
+                    style={{ display: "flex", alignItems: "center", gap: 12 }}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={influencerImage.url}
+                      alt="Influenceur"
+                      style={{
+                        width: 64,
+                        height: 64,
+                        objectFit: "cover",
+                        borderRadius: 32,
+                        border: "1px solid var(--border)",
+                      }}
+                    />
+                    <div>
+                      <p style={{ color: "var(--text)", fontSize: 13 }}>
+                        Photo ajoutée ✅
+                      </p>
+                      <p style={{ color: "var(--text2)", fontSize: 12 }}>
+                        L&apos;IA va la transformer en style Pixar
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setInfluencerImage(null)}
+                        style={{
+                          color: "#ff6666",
+                          fontSize: 12,
+                          background: "none",
+                          border: "none",
+                          cursor: "pointer",
+                          padding: 0,
+                          marginTop: 4,
+                        }}
+                      >
+                        Changer
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <label
+                    htmlFor={influencerInputId}
+                    style={{ cursor: "pointer", display: "block" }}
+                  >
+                    <div
+                      style={{
+                        border: "2px dashed rgba(232,49,58,0.4)",
+                        borderRadius: 12,
+                        padding: 20,
+                        textAlign: "center",
+                      }}
+                    >
+                      <p style={{ fontSize: 24, marginBottom: 8 }}>👤</p>
+                      <p style={{ color: "var(--text2)", fontSize: 13 }}>
+                        {influencerUploading
+                          ? "Import en cours…"
+                          : "Clique pour uploader une photo de l'influenceur"}
+                      </p>
+                      <p
+                        style={{
+                          color: "var(--text3)",
+                          fontSize: 11,
+                          marginTop: 4,
+                        }}
+                      >
+                        JPG, PNG — photo claire, visage visible
+                      </p>
+                    </div>
+                    <input
+                      id={influencerInputId}
+                      type="file"
+                      accept="image/*,.jpg,.jpeg,.png,.webp"
+                      style={{ display: "none" }}
+                      disabled={influencerUploading}
+                      onChange={(e) => void handleInfluencerUpload(e)}
+                    />
+                  </label>
+                ))}
+
+              {influencerError && (
+                <p
+                  role="alert"
+                  style={{ marginTop: 10, fontSize: 12, color: "#ff8fa3" }}
+                >
+                  {influencerError}
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
-        <div style={{ marginBottom: 16 }}>
+        <div className="reveal-item" style={{ marginBottom: 16, animationDelay: "390ms" }}>
           <div
             style={{
               fontSize: 10,
@@ -730,7 +993,7 @@ export default function Step1Product({ onNext, loading, initial }: Props) {
           </div>
         </div>
 
-        <div style={{ marginBottom: 16 }}>
+        <div className="reveal-item" style={{ marginBottom: 16, animationDelay: "440ms" }}>
           <div
             style={{
               fontSize: 10,
@@ -784,22 +1047,26 @@ export default function Step1Product({ onNext, loading, initial }: Props) {
           </div>
         </div>
 
-        <label className="field-label">Cible</label>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8, marginBottom: 16 }}>
-          {AUDIENCES.map((a) => (
-            <Chip key={a} active={audience === a} onClick={() => setAudience(a)}>
-              {a}
-            </Chip>
-          ))}
+        <div className="reveal-item" style={{ animationDelay: "490ms" }}>
+          <label className="field-label">Cible</label>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8, marginBottom: 16 }}>
+            {AUDIENCES.map((a) => (
+              <Chip key={a} active={audience === a} onClick={() => setAudience(a)}>
+                {a}
+              </Chip>
+            ))}
+          </div>
         </div>
 
-        <label className="field-label">Objectif</label>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
-          {AD_GOALS.map((g) => (
-            <Chip key={g} active={goal === g} onClick={() => setGoal(g)}>
-              {g}
-            </Chip>
-          ))}
+        <div className="reveal-item" style={{ animationDelay: "540ms" }}>
+          <label className="field-label">Objectif</label>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+            {AD_GOALS.map((g) => (
+              <Chip key={g} active={goal === g} onClick={() => setGoal(g)}>
+                {g}
+              </Chip>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -807,8 +1074,12 @@ export default function Step1Product({ onNext, loading, initial }: Props) {
         type="button"
         onClick={submit}
         disabled={!canContinue || loading}
-        className="btn-primary"
-        style={{ width: "100%", opacity: !canContinue || loading ? 0.6 : 1 }}
+        className="btn-primary reveal-item"
+        style={{
+          width: "100%",
+          opacity: !canContinue || loading ? 0.6 : 1,
+          animationDelay: "560ms",
+        }}
       >
         {loading
           ? "Génération du script…"

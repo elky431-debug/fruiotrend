@@ -17,7 +17,7 @@ const FAQ_ITEMS = [
   },
   {
     q: "Combien de crédits consomme une pub ?",
-    a: "Chaque scène animée consomme des crédits fal selon ton plan. Le forfait gratuit permet de tester le flux complet.",
+    a: "Script : 1 crédit. Image : 1 crédit par scène. Vidéo + voix + lip sync : 4 crédits par scène. Total : 6 crédits (1 scène), 11 (2 scènes), 16 (3 scènes).",
   },
 ];
 

@@ -30,6 +30,8 @@ export interface ProductInput {
   images: string[];
   imagesMimeType: string[];
   packagingImage?: ProductImageAsset | null;
+  influencerMode?: "ai" | "photo";
+  influencerImage?: ProductImageAsset | null;
 }
 
 export interface AdCharacter {

@@ -24,14 +24,14 @@ export function FinalCTASection() {
               textDecoration: "none",
             }}
           >
-            Créer ma pub gratuitement →
+            Créer ma pub →
           </Link>
           <Link href="#tarifs" className="landing-cta-secondary">
             Voir les tarifs
           </Link>
         </div>
         <p className="landing-cta-note">
-          Sans carte bancaire · 3 crédits offerts
+          Paiement sécurisé · Annulation à tout moment
         </p>
       </div>
     </section>
