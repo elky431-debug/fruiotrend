@@ -81,7 +81,10 @@ export async function generateGrokSpeech(
 
   if (!response.ok) {
     const err = await response.text();
-    throw new Error("Erreur lors de la génération de la voix PubMoi. Réessaie.");
+    // On inclut le statut HTTP dans le message pour que la logique de fallback
+    // (isGrokAuthError) puisse détecter un refus d'autorisation et basculer
+    // sur ElevenLabs. Ce message reste interne (catché par le fallback).
+    throw new Error(`Grok TTS HTTP ${response.status}: ${err.slice(0, 200)}`);
   }
 
   const audioBuffer = await response.arrayBuffer();

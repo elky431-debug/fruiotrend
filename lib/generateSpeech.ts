@@ -81,11 +81,16 @@ export async function generateSpeechWithFallback(
       return { ...grok, voiceId: uiId };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      if (!isGrokAuthError(msg) || !process.env.FAL_API_KEY) {
+      // Si fal/ElevenLabs est dispo, on bascule pour TOUTE erreur Grok (auth,
+      // quota, réseau…). La voix ElevenLabs est la source fiable ; ne jamais
+      // bloquer l'utilisateur à cause de Grok.
+      if (!process.env.FAL_API_KEY) {
         throw err;
       }
       console.warn(
-        "[SPEECH] Grok TTS refusé (permissions), fallback ElevenLabs —",
+        isGrokAuthError(msg)
+          ? "[SPEECH] Grok TTS non autorisé, fallback ElevenLabs —"
+          : "[SPEECH] Grok TTS en échec, fallback ElevenLabs —",
         msg.slice(0, 160)
       );
     }
