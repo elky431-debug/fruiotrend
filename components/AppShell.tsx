@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { PubMoiLogo } from "@/components/brand/PubMoiLogo";
 import { useCredits } from "@/hooks/useCredits";
+import { getSupabaseBrowser } from "@/lib/supabase";
 
 const NAV = [
   { href: "/dashboard", label: "Mes pubs" },
@@ -16,9 +17,27 @@ const LOW_CREDITS_THRESHOLD = 6;
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const path = usePathname();
+  const router = useRouter();
   const { credits } = useCredits();
   const lowCredits = credits !== null && credits < LOW_CREDITS_THRESHOLD;
   const [menuOpen, setMenuOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  const handleLogout = async () => {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    try {
+      const supabase = getSupabaseBrowser();
+      if (supabase) await supabase.auth.signOut();
+    } catch {
+      // On redirige quand même vers la page de connexion.
+    } finally {
+      setMenuOpen(false);
+      router.push("/login");
+      router.refresh();
+      setLoggingOut(false);
+    }
+  };
 
   // Ferme le menu mobile à chaque changement de page.
   useEffect(() => {
@@ -152,8 +171,23 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             style={{ display: "flex", alignItems: "center", gap: 12 }}
           >
             {creditsPill}
+            <button
+              type="button"
+              onClick={() => void handleLogout()}
+              disabled={loggingOut}
+              className="btn-sec"
+              style={{
+                padding: "8px 14px",
+                fontSize: 12,
+                fontWeight: 600,
+                opacity: loggingOut ? 0.6 : 1,
+              }}
+            >
+              {loggingOut ? "Déconnexion…" : "Se déconnecter"}
+            </button>
             <Link
               href="/settings"
+              title="Paramètres"
               style={{
                 width: 36,
                 height: 36,
@@ -265,6 +299,26 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 👤 Mon compte
               </div>
             </Link>
+            <button
+              type="button"
+              onClick={() => void handleLogout()}
+              disabled={loggingOut}
+              style={{
+                padding: "13px 16px",
+                borderRadius: 12,
+                fontSize: 15,
+                fontWeight: 600,
+                textAlign: "center",
+                background: "rgba(227, 43, 69, 0.12)",
+                color: "#ff8fa3",
+                border: "1px solid rgba(227, 43, 69, 0.35)",
+                cursor: loggingOut ? "wait" : "pointer",
+                fontFamily: "inherit",
+                opacity: loggingOut ? 0.6 : 1,
+              }}
+            >
+              {loggingOut ? "Déconnexion…" : "Se déconnecter"}
+            </button>
           </div>
         )}
       </header>

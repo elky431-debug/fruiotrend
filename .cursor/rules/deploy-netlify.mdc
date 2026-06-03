@@ -1,0 +1,25 @@
+---
+description: Déployer automatiquement sur Netlify après chaque modification du projet
+alwaysApply: true
+---
+
+# Déploiement Netlify (PubMoi)
+
+Après avoir terminé des modifications de code (features, fixes, UI), **pousse et déploie** sans attendre que l'utilisateur le redemande, sauf s'il dit explicitement de ne pas déployer.
+
+## Workflow
+
+1. Vérifier que le build passe : `npm run build` (sauf changements docs-only triviaux).
+2. `git status` + `git diff` pour ne committer que les fichiers pertinents (jamais `.env`, secrets, `.next`).
+3. Commit avec un message clair (pourquoi, pas seulement quoi).
+4. `git push origin main` — Netlify rebuild via le repo GitHub (`elky431-debug/fruiotrend`).
+
+## Règles git
+
+- Ne pas committer sans changements utiles.
+- Guillemets pour les chemins avec parenthèses : `"app/(app)/..."`.
+- Ne pas push --force sur `main` sauf demande explicite.
+
+## Fin de tâche
+
+Indiquer le hash du commit et rappeler que le déploiement Netlify prend ~2–5 min sur https://pubmoi.com.
