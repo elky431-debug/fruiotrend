@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   extractVideoUrl,
+  falQueueStatusUrl,
   fetchFalResultOnce,
   parseFalBillingError,
-  VIDEO_QUEUE,
 } from "@/lib/klingFal";
 
 export const maxDuration = 30;
@@ -15,6 +15,7 @@ function normalizeStatus(raw?: string): string {
 export async function GET(req: NextRequest) {
   try {
     const requestId = req.nextUrl.searchParams.get("requestId");
+    const customStatusUrl = req.nextUrl.searchParams.get("statusUrl");
 
     if (!requestId) {
       return NextResponse.json({ error: "requestId manquant" }, { status: 400 });
@@ -34,10 +35,12 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ status: "COMPLETED", videoUrl: readyUrl });
     }
 
-    const statusRes = await fetch(
-      `${VIDEO_QUEUE}/requests/${requestId}/status`,
-      { headers: auth }
-    );
+    const statusEndpoint =
+      customStatusUrl?.startsWith("https://queue.fal.run/")
+        ? customStatusUrl
+        : falQueueStatusUrl(requestId);
+
+    const statusRes = await fetch(statusEndpoint, { headers: auth });
 
     if (!statusRes.ok) {
       const text = await statusRes.text();

@@ -155,13 +155,21 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const falData = JSON.parse(falText) as { request_id?: string };
+    const falData = JSON.parse(falText) as {
+      request_id?: string;
+      status_url?: string;
+      response_url?: string;
+    };
     const requestId = falData.request_id;
     if (!requestId) {
       return NextResponse.json({ error: "Pas de request_id" }, { status: 500 });
     }
 
-    return NextResponse.json({ requestId });
+    return NextResponse.json({
+      requestId,
+      statusUrl: falData.status_url,
+      responseUrl: falData.response_url,
+    });
   } catch (error) {
     return NextResponse.json(
       {

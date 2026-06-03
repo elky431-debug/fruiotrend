@@ -2,6 +2,8 @@
 export const VIDEO_MODEL = "fal-ai/ltx-2.3/image-to-video/fast";
 export const VIDEO_QUEUE = `https://queue.fal.run/${VIDEO_MODEL}`;
 export const VIDEO_RUN = `https://fal.run/${VIDEO_MODEL}`;
+/** fal raccourcit le chemin pour status/result : …/fal-ai/ltx-2.3/requests/{id} */
+export const VIDEO_QUEUE_REQUESTS = "https://queue.fal.run/fal-ai/ltx-2.3";
 
 /** @deprecated aliases */
 export const KLING_MODEL = VIDEO_MODEL;
@@ -256,7 +258,7 @@ export async function fetchFalResultOnce(
   const url =
     typeof responseUrl === "string"
       ? responseUrl
-      : `${VIDEO_QUEUE}/requests/${requestId}`;
+      : `${VIDEO_QUEUE_REQUESTS}/requests/${requestId}`;
 
   try {
     const res = await fetch(url, { headers: auth });
@@ -266,4 +268,8 @@ export async function fetchFalResultOnce(
   } catch {
     return { payload: null, videoUrl: null };
   }
+}
+
+export function falQueueStatusUrl(requestId: string): string {
+  return `${VIDEO_QUEUE_REQUESTS}/requests/${requestId}/status`;
 }

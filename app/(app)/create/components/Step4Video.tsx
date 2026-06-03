@@ -109,7 +109,8 @@ async function generateOneClip(
   durationSeconds: number,
   sc: ScenePromptFallbacks,
   audioOpts?: { voiceover: string; voiceStyle: string; template?: string },
-  segmentExtra = false
+  segmentExtra = false,
+  onPoll?: (pct: number) => void
 ): Promise<string> {
   const startRes = await authFetch("/api/video/start", {
     method: "POST",
@@ -141,11 +142,15 @@ async function generateOneClip(
   window.dispatchEvent(new Event("credits-updated"));
 
   const requestId = startData.requestId as string;
+  const statusUrl =
+    typeof startData.statusUrl === "string" ? startData.statusUrl : null;
 
-  // Polling : ~4 min max (80 essais × 3s). Chaque appel est court → compatible
-  // serverless.
-  for (let attempt = 0; attempt < 80; attempt++) {
-    await new Promise((r) => setTimeout(r, 3000));
+  // Polling : ~6 min max. Chaque appel est court → compatible serverless.
+  for (let attempt = 0; attempt < 120; attempt++) {
+    if (attempt > 0) {
+      await new Promise((r) => setTimeout(r, 3000));
+    }
+    onPoll?.(Math.min(92, 8 + attempt * 2));
 
     let statusData: {
       status?: string;
@@ -153,17 +158,20 @@ async function generateOneClip(
       error?: string;
     } = {};
     try {
+      const statusQuery = statusUrl
+        ? `&statusUrl=${encodeURIComponent(statusUrl)}`
+        : "";
       const statusRes = await authFetch(
-        `/api/video/status?requestId=${encodeURIComponent(requestId)}`
+        `/api/video/status?requestId=${encodeURIComponent(requestId)}${statusQuery}`
       );
       statusData = await statusRes.json().catch(() => ({}));
     } catch {
-      // Erreur réseau ponctuelle → on retente au prochain tour.
       continue;
     }
 
     const status = (statusData.status || "").toUpperCase();
     if (status === "COMPLETED" && statusData.videoUrl) {
+      onPoll?.(95);
       return statusData.videoUrl;
     }
     if (status === "FAILED" || status === "ERROR" || status === "CANCELLED") {
@@ -200,12 +208,11 @@ async function generateSceneVideoFast(
   const segments = planSegmentDurations(targetDuration);
 
   const started = Date.now();
-  // On allonge la barre de progression proportionnellement au nombre de segments.
   const expectedTotal = EXPECTED_MS * segments.length;
   const tick = window.setInterval(() => {
     const pct = Math.min(
-      92,
-      Math.round(((Date.now() - started) / expectedTotal) * 92)
+      85,
+      Math.round(((Date.now() - started) / expectedTotal) * 85)
     );
     callbacks?.onPoll?.(pct);
   }, 400);
@@ -220,7 +227,8 @@ async function generateSceneVideoFast(
         segments[s],
         sc,
         audioOpts,
-        s > 0 // segments suivants : ne débiter que la vidéo
+        s > 0,
+        (pct) => callbacks?.onPoll?.(pct)
       );
       clipUrls.push(url);
     }
