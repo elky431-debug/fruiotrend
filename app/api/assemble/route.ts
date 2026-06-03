@@ -5,7 +5,9 @@ import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import { ensureWavBuffer } from "@/lib/audio";
-import { resolveFfmpegPath } from "@/lib/ffmpeg";
+import { assembleScenesCloud } from "@/lib/assembleCloud";
+import { falMergeVideos, fetchVideoBuffer } from "@/lib/falFfmpeg";
+import { isFfmpegAvailable, resolveFfmpegPath } from "@/lib/ffmpeg";
 import { downloadVideoToFile } from "@/lib/videoFetch";
 
 const execFileAsync = promisify(execFile);
@@ -146,6 +148,19 @@ export async function POST(req: NextRequest) {
 
   if (singleImageMode && clipUrls && clipUrls.length > 0) {
     try {
+      if (!isFfmpegAvailable()) {
+        const mergedUrl =
+          clipUrls.length === 1
+            ? clipUrls[0]
+            : await falMergeVideos(clipUrls);
+        const buffer = await fetchVideoBuffer(mergedUrl);
+        return new NextResponse(new Uint8Array(buffer), {
+          headers: {
+            "Content-Type": "video/mp4",
+            "Content-Disposition": 'attachment; filename="pub.mp4"',
+          },
+        });
+      }
       return await assembleClipUrlsOnly(clipUrls);
     } catch (error) {
       console.error("[ASSEMBLE] singleImageMode:", error);
@@ -167,6 +182,18 @@ export async function POST(req: NextRequest) {
         { error: "Aucune scène fournie" },
         { status: 400 }
       );
+    }
+
+    // Netlify / serverless : pas de binaire ffmpeg → assemblage cloud fal.
+    if (!isFfmpegAvailable()) {
+      console.log("[ASSEMBLE] Fallback cloud (sans ffmpeg local)");
+      const finalBuffer = await assembleScenesCloud(scenes);
+      return new NextResponse(new Uint8Array(finalBuffer), {
+        headers: {
+          "Content-Type": "video/mp4",
+          "Content-Disposition": 'attachment; filename="pub.mp4"',
+        },
+      });
     }
 
     const ffmpeg = resolveFfmpegPath();

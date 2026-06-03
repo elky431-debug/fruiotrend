@@ -4,9 +4,10 @@ import { promisify } from "node:util";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import { resolveFfmpegPath } from "@/lib/ffmpeg";
+import { resolveFfmpegPath, isFfmpegAvailable } from "@/lib/ffmpeg";
 import { downloadVideoToFile } from "@/lib/videoFetch";
 import { uploadVideoToFal } from "@/lib/lipsyncFal";
+import { falMergeVideos, fetchVideoBuffer } from "@/lib/falFfmpeg";
 
 const execFileAsync = promisify(execFile);
 export const maxDuration = 300;
@@ -36,6 +37,25 @@ export async function POST(req: NextRequest) {
   // Un seul segment : rien à concaténer.
   if (clipUrls.length === 1) {
     return NextResponse.json({ videoUrl: clipUrls[0] });
+  }
+
+  if (!isFfmpegAvailable()) {
+    try {
+      const mergedUrl = await falMergeVideos(clipUrls);
+      console.log("[VIDEO/CONCAT] cloud ✅", mergedUrl.slice(0, 70));
+      return NextResponse.json({ videoUrl: mergedUrl });
+    } catch (error) {
+      console.error("[VIDEO/CONCAT] cloud:", error);
+      return NextResponse.json(
+        {
+          error:
+            error instanceof Error
+              ? error.message
+              : "Concaténation vidéo échouée",
+        },
+        { status: 500 }
+      );
+    }
   }
 
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "pubmoi-concat-"));

@@ -11,6 +11,8 @@ import {
   uploadAudioToFal,
   uploadVideoToFal,
 } from "@/lib/lipsyncFal";
+import { falMergeAudioVideo } from "@/lib/falFfmpeg";
+import { isFfmpegAvailable } from "@/lib/ffmpeg";
 import { bufferLooksLikeMp4, downloadVideoToFile } from "@/lib/videoFetch";
 
 export const maxDuration = 180;
@@ -273,7 +275,19 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    console.warn("[LIPSYNC] Modèles fal échoués — fallback mux ffmpeg");
+    console.warn("[LIPSYNC] Modèles fal échoués — fallback mux");
+    if (!isFfmpegAvailable()) {
+      const mergedUrl = await falMergeAudioVideo(
+        uploadedVideoUrl,
+        uploadedAudioUrl
+      );
+      cleanup(tmpDir);
+      return NextResponse.json({
+        videoUrl: mergedUrl,
+        lipsyncApplied: false,
+        mode: "fal-mux",
+      });
+    }
     const muxed = await muxOnlyAndUpload(
       apiKey,
       videoPath,

@@ -7,3 +7,7 @@
 
 [build.environment]
   NODE_VERSION = "20"
+
+# Inclure ffmpeg-static dans les fonctions serverless (Linux en prod)
+[functions]
+  included_files = ["node_modules/ffmpeg-static/**"]

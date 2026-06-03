@@ -1,7 +1,8 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { resolveFfmpegPath } from "@/lib/ffmpeg";
 import { extractVideoUrl } from "@/lib/klingFal";
+import { falMergeAudioVideo } from "@/lib/falFfmpeg";
+import { isFfmpegAvailable } from "@/lib/ffmpeg";
 
 const execFileAsync = promisify(execFile);
 
@@ -92,6 +93,7 @@ export async function muxVideoWithVoiceover(
   audioPath: string,
   outputPath: string
 ): Promise<void> {
+  const { resolveFfmpegPath } = await import("@/lib/ffmpeg");
   const ffmpeg = resolveFfmpegPath();
   const common = [
     "-y",
