@@ -34,28 +34,11 @@ export function HeroSection() {
             sans caméra, sans freelance.
           </p>
 
-          <Link
-            href="/create"
-            className="btn-primary"
-            style={{
-              marginTop: "2rem",
-              display: "inline-flex",
-              padding: "1rem 2rem",
-              fontSize: "1.05rem",
-              textDecoration: "none",
-            }}
-          >
+          <Link href="/create" className="btn-primary landing-hero-cta">
             Commencer maintenant →
           </Link>
 
-          <div
-            style={{
-              marginTop: "2rem",
-              display: "flex",
-              alignItems: "center",
-              gap: "0.75rem",
-            }}
-          >
+          <div className="landing-hero-social">
             <div style={{ display: "flex" }}>
               {["📢", "🛒", "🎬"].map((e, i) => (
                 <span
@@ -84,7 +67,7 @@ export function HeroSection() {
           </div>
         </div>
 
-        <div className="landing-hero-phones">
+        <div className="landing-hero-phones scroll-x">
           {PREVIEW_CARDS.map((card) => (
             <div key={card.src} className="landing-phone-card">
               <span className="landing-phone-badge">{card.badge}</span>

@@ -21,24 +21,100 @@
   max-width: min(280px, 52vw) !important;
 }
 
+/* ---------- Navigation landing ---------- */
 .landing-nav {
-  min-height: 72px;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  border-bottom: 1px solid rgba(255, 92, 157, 0.14);
+  background: rgba(10, 8, 6, 0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  overflow: hidden;
 }
 
 .landing-nav-inner {
   max-width: 72rem;
   margin: 0 auto;
-  padding: 0 1.25rem;
-  min-height: 72px;
-  display: flex;
+  padding: 0 clamp(12px, 4vw, 20px);
+  height: clamp(52px, 12vw, 60px);
+  min-height: 52px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
+  gap: clamp(6px, 2vw, 14px);
+  overflow: hidden;
 }
 
 .landing-nav-logo {
   flex-shrink: 0;
-  min-width: 140px;
+  min-width: 0;
+  line-height: 0;
+}
+
+.landing-root .landing-nav .pubmoi-logo-img {
+  --logo-w: clamp(96px, 26vw, 140px) !important;
+  width: var(--logo-w) !important;
+  min-width: 0 !important;
+  max-width: var(--logo-w) !important;
+}
+
+.landing-nav-links {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(10px, 3vw, 22px);
+  min-width: 0;
+  overflow: hidden;
+}
+
+.landing-nav-links a {
+  color: #c4b5a8;
+  text-decoration: none;
+  font-size: clamp(11px, 2.8vw, 14px);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.landing-nav-actions {
+  display: flex;
+  align-items: center;
+  gap: clamp(4px, 1.5vw, 10px);
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+.landing-nav-login {
+  padding: clamp(5px, 1.2vw, 8px) clamp(7px, 2vw, 14px);
+  border-radius: 99px;
+  border: 1px solid rgba(227, 43, 69, 0.35);
+  color: #fff8f2;
+  font-size: clamp(10px, 2.5vw, 13px);
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+.landing-nav-login-short {
+  display: none;
+}
+
+@media (max-width: 380px) {
+  .landing-nav-login-long {
+    display: none;
+  }
+  .landing-nav-login-short {
+    display: inline;
+  }
+}
+
+.landing-nav-cta.btn-primary {
+  padding: clamp(6px, 1.4vw, 10px) clamp(9px, 2.4vw, 16px) !important;
+  font-size: clamp(10px, 2.6vw, 13px) !important;
+  border-radius: 99px !important;
+  white-space: nowrap;
+  box-shadow: 0 4px 16px rgba(227, 43, 69, 0.35);
 }
 
 .landing-root .landing-media-img {
@@ -94,7 +170,7 @@
 .landing-hero {
   max-width: 72rem;
   margin: 0 auto;
-  padding: 3rem 1rem 4rem;
+  padding: clamp(2rem, 6vw, 3rem) clamp(16px, 5vw, 2.5rem) clamp(2.5rem, 8vw, 4rem);
 }
 
 .landing-hero-grid {
@@ -111,12 +187,19 @@
 
 .landing-hero-phones {
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: flex-start;
-  gap: 0.75rem;
+  gap: clamp(10px, 3vw, 14px);
   flex-wrap: nowrap;
   overflow-x: auto;
-  padding-bottom: 0.5rem;
+  padding: 4px clamp(16px, 5vw, 0) 12px;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+
+.landing-hero-phones .landing-phone-card {
+  scroll-snap-align: center;
+  flex-shrink: 0;
 }
 
 .landing-phone-card {
@@ -362,12 +445,38 @@
 }
 
 .landing-lead {
-  margin-top: 1.25rem;
+  margin-top: clamp(1rem, 3vw, 1.25rem);
   max-width: 32rem;
-  font-size: 1.125rem;
+  font-size: clamp(0.9375rem, 3.5vw, 1.125rem);
   font-weight: 400;
   line-height: 1.65;
   color: #c4b5a8;
+}
+
+.landing-hero-cta {
+  margin-top: clamp(1.25rem, 4vw, 2rem);
+  display: flex !important;
+  width: 100%;
+  max-width: 400px;
+  justify-content: center;
+  padding: clamp(14px, 3.5vw, 18px) clamp(20px, 5vw, 32px) !important;
+  font-size: clamp(0.9375rem, 3.5vw, 1.05rem) !important;
+  box-sizing: border-box;
+  text-align: center;
+}
+
+.landing-hero-social {
+  margin-top: clamp(1rem, 4vw, 2rem);
+  display: flex;
+  align-items: center;
+  gap: clamp(8px, 2.5vw, 12px);
+  flex-wrap: wrap;
+}
+
+.landing-hero-social p {
+  font-size: clamp(12px, 3vw, 13px);
+  color: #c4b5a8;
+  margin: 0;
 }
 
 .landing-h2 {
@@ -397,6 +506,28 @@
   display: grid;
   gap: 1.5rem;
   margin-top: 2.5rem;
+}
+
+@media (max-width: 767px) {
+  .landing-tarifs-grid {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 14px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x mandatory;
+    padding: 4px 16px 12px;
+    margin-left: -16px;
+    margin-right: -16px;
+    scrollbar-width: none;
+  }
+  .landing-tarifs-grid::-webkit-scrollbar {
+    display: none;
+  }
+  .landing-tarifs-grid .landing-plan-card {
+    flex: 0 0 min(85vw, 300px);
+    scroll-snap-align: center;
+  }
 }
 
 @media (min-width: 768px) {
@@ -1514,4 +1645,84 @@
 
 .landing-root .btn-primary {
   box-shadow: 0 4px 20px rgba(227, 43, 69, 0.25);
+}
+
+/* ---------- Mobile landing — utilitaires & sections ---------- */
+.scroll-x {
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.scroll-x::-webkit-scrollbar {
+  display: none;
+}
+
+.landing-section {
+  padding: clamp(2rem, 6vw, 4rem) clamp(16px, 5vw, 1rem);
+}
+
+.landing-steps-section,
+.landing-social-section,
+.landing-testimonials-section,
+.landing-faq-section {
+  padding-left: clamp(16px, 5vw, 1.5rem);
+  padding-right: clamp(16px, 5vw, 1.5rem);
+}
+
+.landing-root .badge-accent {
+  font-size: clamp(9px, 2.2vw, 10px);
+  padding: clamp(5px, 1.2vw, 6px) clamp(10px, 2.5vw, 12px);
+}
+
+.landing-root button,
+.landing-root a {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (max-width: 767px) {
+  .landing-h1 br {
+    display: block;
+  }
+
+  .landing-hero-grid {
+    gap: clamp(1.5rem, 5vw, 2.5rem);
+  }
+
+  .landing-phone-card {
+    width: clamp(140px, 42vw, 180px);
+  }
+
+  .landing-features-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .landing-feature-card.span-2 {
+    grid-column: span 1;
+  }
+
+  .landing-compare-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .landing-testimonials-grid {
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 14px;
+    padding-bottom: 8px;
+    scrollbar-width: none;
+  }
+
+  .landing-testimonials-grid::-webkit-scrollbar {
+    display: none;
+  }
+
+  .landing-testimonial-card {
+    flex: 0 0 min(88vw, 340px);
+    scroll-snap-align: center;
+  }
 }
