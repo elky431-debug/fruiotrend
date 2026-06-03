@@ -1,9 +1,10 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { PLANS } from "@/lib/plans";
 import { authFetch } from "@/lib/authFetch";
+import { getSupabaseBrowser } from "@/lib/supabase";
 
 export default function PlansPage() {
   return (
@@ -17,29 +18,68 @@ function PlansContent() {
   const params = useSearchParams();
   const isPaywall = params.get("paywall") === "true";
   const [loading, setLoading] = useState<string | null>(null);
+  const autoTriggered = useRef(false);
 
-  const handleSubscribe = async (planId: string) => {
-    setLoading(planId);
-    try {
-      const res = await authFetch("/api/stripe/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ planId }),
-      });
-      const data = await res.json();
-      if (!res.ok || data.error) {
-        alert(data.error || "Erreur lors du paiement");
-        return;
+  const goToLogin = useCallback((planId: string) => {
+    // Conserve le plan choisi pour reprendre le paiement après connexion.
+    const back = `/plans?plan=${encodeURIComponent(planId)}`;
+    window.location.href = `/login?redirect=${encodeURIComponent(back)}`;
+  }, []);
+
+  const handleSubscribe = useCallback(
+    async (planId: string) => {
+      setLoading(planId);
+      try {
+        // Vérifie la session avant tout : sans connexion, on envoie d'abord
+        // l'utilisateur vers /login (sinon l'API renvoie « Non connecté »).
+        const supabase = getSupabaseBrowser();
+        if (supabase) {
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
+          if (!session) {
+            goToLogin(planId);
+            return;
+          }
+        }
+
+        const res = await authFetch("/api/stripe/checkout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ planId }),
+        });
+
+        if (res.status === 401) {
+          goToLogin(planId);
+          return;
+        }
+
+        const data = await res.json();
+        if (!res.ok || data.error) {
+          alert(data.error || "Erreur lors du paiement");
+          return;
+        }
+        if (data.url) {
+          window.location.href = data.url;
+        }
+      } catch {
+        alert("Impossible de contacter le paiement. Réessaie.");
+      } finally {
+        setLoading(null);
       }
-      if (data.url) {
-        window.location.href = data.url;
-      }
-    } catch {
-      alert("Impossible de contacter Stripe");
-    } finally {
-      setLoading(null);
+    },
+    [goToLogin]
+  );
+
+  // Reprise auto : si on revient de la connexion avec ?plan=…, relance le paiement.
+  useEffect(() => {
+    const plan = params.get("plan");
+    if (!plan || autoTriggered.current || !PLANS[plan as keyof typeof PLANS]) {
+      return;
     }
-  };
+    autoTriggered.current = true;
+    void handleSubscribe(plan);
+  }, [params, handleSubscribe]);
 
   return (
     <div style={{ maxWidth: 960, margin: "0 auto", padding: "60px 20px" }}>

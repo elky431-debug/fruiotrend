@@ -151,7 +151,10 @@ function RegisterForm() {
 
         <p className="mt-6 text-center text-sm text-text-muted">
           Déjà inscrit ?{" "}
-          <Link href="/login" className="text-accent hover:underline">
+          <Link
+            href={`/login?redirect=${encodeURIComponent(redirect)}`}
+            className="text-accent hover:underline"
+          >
             Se connecter
           </Link>
         </p>
