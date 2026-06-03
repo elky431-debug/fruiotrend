@@ -59,10 +59,15 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const regenerate = Boolean((body as { regenerate?: boolean }).regenerate);
+    // Segment supplémentaire d'une scène longue (>20s) : seule la vidéo est
+    // facturée (voix + lip sync débités une seule fois par scène).
+    const segmentExtra = Boolean((body as { segmentExtra?: boolean }).segmentExtra);
 
-    const creditGuard = regenerate
-      ? await requireCredits(req, "video", { regenerate: true })
-      : await requireCreditsMulti(req, ["video", "voice", "lipsync"]);
+    const creditGuard = segmentExtra
+      ? await requireCredits(req, "video")
+      : regenerate
+        ? await requireCredits(req, "video", { regenerate: true })
+        : await requireCreditsMulti(req, ["video", "voice", "lipsync"]);
     if (creditGuard instanceof NextResponse) return creditGuard;
 
     const {

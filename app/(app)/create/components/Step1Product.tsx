@@ -128,6 +128,7 @@ export default function Step1Product({
   >(initial?.influencerBackgroundMode ?? "change");
   const [influencerUploading, setInfluencerUploading] = useState(false);
   const [influencerError, setInfluencerError] = useState<string | null>(null);
+  const [subStep, setSubStep] = useState(0);
   const fileInputId = useId();
   const packagingInputId = useId();
   const influencerInputId = useId();
@@ -354,8 +355,35 @@ export default function Step1Product({
 
   const selectedMeta = getTemplateConfig(template);
 
+  // Découpage en 4 sous-étapes légères (mobile-friendly) : Photos → Produit →
+  // Style → Réglages. Chaque écran ne montre qu'un bloc d'infos à la fois.
+  const SUB_STEPS = ["Photos", "Produit", "Style", "Réglages"];
+  const stepValid = [
+    images.length > 0,
+    Boolean(productName.trim()) && Boolean(description.trim()),
+    Boolean(template),
+    canContinue,
+  ];
+  const goNextSub = () => {
+    if (!stepValid[subStep]) return;
+    setSubStep((s) => Math.min(SUB_STEPS.length - 1, s + 1));
+  };
+  const goPrevSub = () => setSubStep((s) => Math.max(0, s - 1));
+  const jumpToSub = (target: number) => {
+    if (target <= subStep) {
+      setSubStep(target);
+      return;
+    }
+    // On n'autorise à avancer que si toutes les étapes précédentes sont valides.
+    for (let i = 0; i < target; i++) {
+      if (!stepValid[i]) return;
+    }
+    setSubStep(target);
+  };
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {subStep === 0 && (
       <Reveal delay={0}>
         <div className="create-hero">
           <div className="create-hero-text">
@@ -382,7 +410,16 @@ export default function Step1Product({
           </div>
         </div>
       </Reveal>
+      )}
 
+      <SubStepper
+        steps={SUB_STEPS}
+        current={subStep}
+        valid={stepValid}
+        onJump={jumpToSub}
+      />
+
+      {subStep === 0 && (
       <section className="studio-section reveal-item" style={{ animationDelay: "90ms" }}>
         <div className="studio-section-head">
           <div className="step-badge">1</div>
@@ -675,7 +712,9 @@ export default function Step1Product({
           )}
         </div>
       </section>
+      )}
 
+      {subStep === 1 && (
       <section className="studio-section reveal-item" style={{ animationDelay: "170ms" }}>
         <div className="step-title" style={{ marginBottom: 12 }}>
           Description du produit
@@ -702,10 +741,12 @@ export default function Step1Product({
           </Reveal>
         </div>
       </section>
+      )}
 
+      {subStep === 2 && (
       <section className="studio-section reveal-item" style={{ animationDelay: "260ms" }}>
         <div className="step-title" style={{ marginBottom: 12 }}>
-          Paramètres de la pub
+          Style &amp; format
         </div>
 
         <div style={{ marginBottom: 16 }}>
@@ -1043,6 +1084,14 @@ export default function Step1Product({
             </div>
           )}
         </div>
+      </section>
+      )}
+
+      {subStep === 3 && (
+      <section className="studio-section reveal-item" style={{ animationDelay: "300ms" }}>
+        <div className="step-title" style={{ marginBottom: 12 }}>
+          Réglages
+        </div>
 
         <div className="reveal-item" style={{ marginBottom: 16, animationDelay: "390ms" }}>
           <div
@@ -1165,7 +1214,38 @@ export default function Step1Product({
           </div>
         </div>
       </section>
+      )}
 
+      <div style={{ display: "flex", gap: 8 }}>
+        {subStep > 0 && (
+          <button
+            type="button"
+            onClick={goPrevSub}
+            className="btn-sec"
+            style={{ flex: 1, justifyContent: "center" }}
+          >
+            ← Retour
+          </button>
+        )}
+        {subStep < SUB_STEPS.length - 1 && (
+          <button
+            type="button"
+            onClick={goNextSub}
+            disabled={!stepValid[subStep]}
+            className="btn-primary"
+            style={{
+              flex: 2,
+              justifyContent: "center",
+              opacity: stepValid[subStep] ? 1 : 0.6,
+            }}
+          >
+            Suivant →
+          </button>
+        )}
+      </div>
+
+      {subStep === SUB_STEPS.length - 1 && (
+      <>
       <button
         type="button"
         onClick={submit}
@@ -1200,6 +1280,92 @@ export default function Step1Product({
           ✍️ Écrire mon script moi-même
         </button>
       )}
+      </>
+      )}
+    </div>
+  );
+}
+
+function SubStepper({
+  steps,
+  current,
+  valid,
+  onJump,
+}: {
+  steps: string[];
+  current: number;
+  valid: boolean[];
+  onJump: (target: number) => void;
+}) {
+  return (
+    <div
+      className="scroll-x"
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 6,
+        padding: "2px 0",
+      }}
+    >
+      {steps.map((label, i) => {
+        const active = i === current;
+        const done = i < current && valid[i];
+        return (
+          <button
+            key={label}
+            type="button"
+            onClick={() => onJump(i)}
+            style={{
+              flex: "1 1 0",
+              minWidth: 64,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 4,
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              fontFamily: "inherit",
+              padding: "2px 0",
+            }}
+          >
+            <span
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 26,
+                height: 26,
+                borderRadius: "50%",
+                fontSize: 12,
+                fontWeight: 700,
+                color: active || done ? "#fff" : "var(--text2)",
+                background: active
+                  ? "var(--accent)"
+                  : done
+                    ? "rgba(34,197,94,0.85)"
+                    : "var(--bg3)",
+                border: `1px solid ${
+                  active ? "var(--accent)" : "var(--border)"
+                }`,
+                transition: "all 0.15s",
+              }}
+            >
+              {done ? "✓" : i + 1}
+            </span>
+            <span
+              style={{
+                fontSize: 10,
+                fontWeight: active ? 700 : 500,
+                color: active ? "var(--accent-warm)" : "var(--text3)",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {label}
+            </span>
+          </button>
+        );
+      })}
     </div>
   );
 }

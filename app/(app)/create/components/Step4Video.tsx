@@ -94,6 +94,14 @@ function planSegmentDurations(totalSeconds: number): number[] {
   return Array.from({ length: count }, () => Math.min(LTX_MAX_CLIP_SECONDS, per));
 }
 
+/**
+ * Génération vidéo en mode "queue" (asynchrone) : on démarre le job côté fal
+ * via /api/video/start (retour immédiat) puis on interroge /api/video/status
+ * par petits appels courts. Indispensable en production : les fonctions
+ * serverless (Netlify) coupent à ~26s, alors qu'une génération LTX prend
+ * 30–90s. L'ancien appel synchrone /api/video/generate dépassait ce délai et
+ * renvoyait "génération échouée".
+ */
 async function generateOneClip(
   basePrompt: string,
   imageUrl: string | null,
@@ -103,7 +111,7 @@ async function generateOneClip(
   audioOpts?: { voiceover: string; voiceStyle: string; template?: string },
   segmentExtra = false
 ): Promise<string> {
-  const res = await authFetch("/api/video/generate", {
+  const startRes = await authFetch("/api/video/start", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -119,19 +127,51 @@ async function generateOneClip(
     }),
   });
 
-  const data = await res.json().catch(() => ({}));
-  if (res.status === 402) {
+  const startData = await startRes.json().catch(() => ({}));
+  if (startRes.status === 402) {
     window.dispatchEvent(new Event("credits-updated"));
     throw new Error(
-      data.error ||
-        `Crédits insuffisants (${data.required} requis, ${data.remaining} restants)`
+      startData.error ||
+        `Crédits insuffisants (${startData.required} requis, ${startData.remaining} restants)`
     );
   }
-  if (!res.ok || data.error || !data.videoUrl) {
-    throw new Error(data.error || "Échec génération vidéo");
+  if (!startRes.ok || startData.error || !startData.requestId) {
+    throw new Error(startData.error || "Échec démarrage génération vidéo");
   }
   window.dispatchEvent(new Event("credits-updated"));
-  return data.videoUrl as string;
+
+  const requestId = startData.requestId as string;
+
+  // Polling : ~4 min max (80 essais × 3s). Chaque appel est court → compatible
+  // serverless.
+  for (let attempt = 0; attempt < 80; attempt++) {
+    await new Promise((r) => setTimeout(r, 3000));
+
+    let statusData: {
+      status?: string;
+      videoUrl?: string;
+      error?: string;
+    } = {};
+    try {
+      const statusRes = await authFetch(
+        `/api/video/status?requestId=${encodeURIComponent(requestId)}`
+      );
+      statusData = await statusRes.json().catch(() => ({}));
+    } catch {
+      // Erreur réseau ponctuelle → on retente au prochain tour.
+      continue;
+    }
+
+    const status = (statusData.status || "").toUpperCase();
+    if (status === "COMPLETED" && statusData.videoUrl) {
+      return statusData.videoUrl;
+    }
+    if (status === "FAILED" || status === "ERROR" || status === "CANCELLED") {
+      throw new Error(statusData.error || "Génération vidéo échouée");
+    }
+  }
+
+  throw new Error("La génération vidéo a expiré. Réessaie dans un instant.");
 }
 
 async function generateSceneVideoFast(
