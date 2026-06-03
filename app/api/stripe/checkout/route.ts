@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
     payment_method_types: ["card"],
     customer_email: customerEmail,
     line_items: [{ price: plan.priceId, quantity: 1 }],
-    success_url: `${baseUrl}/dashboard?success=true&plan=${planId}`,
+    success_url: `${baseUrl}/dashboard?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${baseUrl}/plans`,
     metadata: {
       userId: auth.userId,

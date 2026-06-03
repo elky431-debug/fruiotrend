@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { authFetch } from "@/lib/authFetch";
 
 interface AdScene {
   number: number;
@@ -41,7 +42,7 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
-    fetch("/api/ads")
+    authFetch("/api/ads")
       .then((r) => r.json())
       .then((data) => setAds(data.ads || []))
       .finally(() => setLoading(false));
@@ -52,7 +53,7 @@ export default function DashboardPage() {
 
     setDeleting(id);
     try {
-      await fetch(`/api/ads/${id}`, { method: "DELETE" });
+      await authFetch(`/api/ads/${id}`, { method: "DELETE" });
       setAds((prev) => prev.filter((ad) => ad.id !== id));
     } finally {
       setDeleting(null);

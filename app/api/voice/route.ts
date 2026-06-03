@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireCredits } from "@/lib/apiCredits";
-import { generateGrokSpeech, normalizeGrokVoiceId } from "@/lib/grokTts";
+import {
+  generateSpeechWithFallback,
+  resolveTtsVoiceIds,
+} from "@/lib/generateSpeech";
 
 export const maxDuration = 60;
 
@@ -9,11 +12,17 @@ export async function POST(req: NextRequest) {
     const creditGuard = await requireCredits(req, "voice");
     if (creditGuard instanceof NextResponse) return creditGuard;
 
-    const { text, emotion, voiceName, narrativeRole } = await req.json();
+    const { text, emotion, voiceName, narrativeRole, productType } =
+      await req.json();
+    const preferElevenLabs =
+      productType === "app" || process.env.TTS_PREFER_ELEVENLABS === "true";
 
-    if (!process.env.GROK_API_KEY) {
+    if (!process.env.GROK_API_KEY && !process.env.FAL_API_KEY) {
       return NextResponse.json(
-        { error: "GROK_API_KEY manquante" },
+        {
+          error:
+            "Configure GROK_API_KEY ou FAL_API_KEY dans .env.local pour la voix.",
+        },
         { status: 500 }
       );
     }
@@ -22,22 +31,33 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Texte manquant" }, { status: 400 });
     }
 
-    const finalVoice = normalizeGrokVoiceId(voiceName);
+    console.log("[VOICE] Voix reçue:", voiceName);
+    console.log("[VOICE] Texte:", String(text).trim().substring(0, 50));
 
-    console.log(
-      "[VOICE] Grok TTS —",
-      finalVoice,
-      "|",
-      String(text).trim().substring(0, 80)
+    const { uiId, grokId, elevenId } = resolveTtsVoiceIds(voiceName);
+    console.log("[VOICE] Voix finale — UI:", uiId, "| Grok:", grokId, "| Eleven:", elevenId);
+
+    const result = await generateSpeechWithFallback(
+      String(text),
+      voiceName || uiId,
+      {
+        emotion,
+        narrativeRole,
+        preferElevenLabs,
+      }
     );
 
-    const result = await generateGrokSpeech(String(text), finalVoice, {
-      emotion,
-      narrativeRole,
+    console.log(
+      "[VOICE] ✅ Audio généré via",
+      result.provider,
+      "| voiceId:",
+      result.voiceId
+    );
+    return NextResponse.json({
+      ...result,
+      usedVoiceId: result.voiceId,
+      requestedVoice: voiceName || null,
     });
-
-    console.log("[VOICE] ✅ Audio généré");
-    return NextResponse.json(result);
   } catch (error) {
     console.error("[VOICE] Erreur:", error);
     return NextResponse.json(

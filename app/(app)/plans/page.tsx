@@ -3,6 +3,7 @@
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { PLANS } from "@/lib/plans";
+import { authFetch } from "@/lib/authFetch";
 
 export default function PlansPage() {
   return (
@@ -20,7 +21,7 @@ function PlansContent() {
   const handleSubscribe = async (planId: string) => {
     setLoading(planId);
     try {
-      const res = await fetch("/api/stripe/checkout", {
+      const res = await authFetch("/api/stripe/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ planId }),

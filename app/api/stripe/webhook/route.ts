@@ -42,20 +42,36 @@ export async function POST(req: NextRequest) {
     const userId = session.metadata?.userId;
     const planId = session.metadata?.planId as PlanId | undefined;
     const plan = planId ? PLANS[planId] : null;
+    const subscriptionId = (session.subscription as string) || null;
 
     if (plan && userId) {
-      await setCredits(userId, plan.credits, "subscription_new");
-      await supabase
+      // Idempotence : si /api/stripe/confirm a déjà octroyé cet abonnement,
+      // ne pas recréditer (évite de remettre les crédits à plein).
+      const { data: existing } = await supabase
         .from("users")
-        .update({
-          plan: planId,
-          stripe_customer_id: session.customer as string,
-          stripe_subscription_id: session.subscription as string,
-          credits_reset_at: new Date(
-            Date.now() + 30 * 24 * 60 * 60 * 1000
-          ).toISOString(),
-        })
-        .eq("id", userId);
+        .select("stripe_subscription_id")
+        .eq("id", userId)
+        .single();
+
+      const alreadyGranted =
+        existing?.stripe_subscription_id &&
+        subscriptionId &&
+        existing.stripe_subscription_id === subscriptionId;
+
+      if (!alreadyGranted) {
+        await setCredits(userId, plan.credits, "subscription_new");
+        await supabase
+          .from("users")
+          .update({
+            plan: planId,
+            stripe_customer_id: session.customer as string,
+            stripe_subscription_id: subscriptionId,
+            credits_reset_at: new Date(
+              Date.now() + 30 * 24 * 60 * 60 * 1000
+            ).toISOString(),
+          })
+          .eq("id", userId);
+      }
     }
   }
 

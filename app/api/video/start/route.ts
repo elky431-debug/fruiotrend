@@ -7,6 +7,7 @@ import {
   mapVideoDurationSeconds,
   parseFalBillingError,
   resolveFalImageUrl,
+  VIDEO_CAMERA_AUDIO_RULES,
   VIDEO_QUEUE,
 } from "@/lib/klingFal";
 
@@ -117,7 +118,7 @@ export async function POST(req: NextRequest) {
           voiceover
             ? `\n\nVoiceover in French (${voiceStyle || "warm natural"}): "${String(voiceover).slice(0, 200)}". Lip-sync mouth: ${mouthExpression || "open mouth speaking"}.`
             : ""
-        }`;
+        }${VIDEO_CAMERA_AUDIO_RULES}`;
 
     const falRes = await fetch(VIDEO_QUEUE, {
       method: "POST",
@@ -132,7 +133,7 @@ export async function POST(req: NextRequest) {
         aspect_ratio: "9:16",
         resolution: "1080p",
         fps: 24,
-        generate_audio: true,
+        generate_audio: false,
       }),
     });
 

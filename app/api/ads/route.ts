@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getApiUserId } from "@/lib/auth-api";
 import {
   getSignedAssetUrl,
   getSupabase,
   hasSupabaseStorageEnv,
 } from "@/lib/storage";
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 type DbScene = {
   imageUrl?: string;
@@ -48,18 +52,20 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ads: [] });
   }
 
-  const supabase = getSupabase();
-  const { searchParams } = new URL(req.url);
-  const userId = searchParams.get("userId");
+  // On ne renvoie que les pubs de l'utilisateur connecté (résolu via token).
+  const resolvedUserId = await getApiUserId(req);
+  if (!resolvedUserId || !UUID_RE.test(resolvedUserId)) {
+    return NextResponse.json({ ads: [] });
+  }
 
-  let query = supabase
+  const supabase = getSupabase();
+  const query = supabase
     .from("ads")
     .select(
       "id, title, hook, product_name, template, scenes, final_video_url, final_video_path, status, created_at"
     )
+    .eq("user_id", resolvedUserId)
     .order("created_at", { ascending: false });
-
-  if (userId) query = query.eq("user_id", userId);
 
   const { data, error } = await query;
   if (error) {

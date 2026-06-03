@@ -77,7 +77,8 @@ export async function checkAndDeduct(
   const cost = CREDIT_COSTS[action];
   const supabase = getSupabaseAdmin();
 
-  if (!supabase) {
+  // Bypass dev : pas de Supabase OU utilisateur synthétique local → jamais bloqué.
+  if (!supabase || isSyntheticDevUser(userId)) {
     const remaining = Number(process.env.CREDITS_DEV_BALANCE ?? 999) - cost;
     return { success: true, remaining: Math.max(0, remaining), cost };
   }
@@ -123,7 +124,7 @@ export async function addCredits(
   reason: string
 ): Promise<void> {
   const supabase = getSupabaseAdmin();
-  if (!supabase) return;
+  if (!supabase || isSyntheticDevUser(userId)) return;
 
   const current = await getCredits(userId);
   const next = current + amount;
@@ -143,7 +144,7 @@ export async function setCredits(
   reason: string
 ): Promise<void> {
   const supabase = getSupabaseAdmin();
-  if (!supabase) return;
+  if (!supabase || isSyntheticDevUser(userId)) return;
 
   await supabase.from("users").update({ credits: amount }).eq("id", userId);
 

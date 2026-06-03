@@ -118,7 +118,7 @@ export default function VoiceSelector({
       <p style={{ color: "var(--text2)", fontSize: 12, marginBottom: 12 }}>
         {voicesLoading
           ? "Chargement…"
-          : `${voices.length} voix — clique ▶ pour écouter un aperçu (GROK_API_KEY requise)`}
+          : `${voices.length} voix — clique ▶ pour écouter un aperçu (GROK ou FAL_API_KEY)`}
       </p>
 
       <input

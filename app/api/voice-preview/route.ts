@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { generateGrokSpeech, normalizeGrokVoiceId } from "@/lib/grokTts";
+import {
+  generateSpeechWithFallback,
+  resolveTtsVoiceIds,
+} from "@/lib/generateSpeech";
 
 export const maxDuration = 30;
 
@@ -17,17 +20,21 @@ export async function POST(req: NextRequest) {
       category?: string;
     };
 
-    if (!process.env.GROK_API_KEY) {
+    if (!process.env.GROK_API_KEY && !process.env.FAL_API_KEY) {
       return NextResponse.json(
-        { error: "GROK_API_KEY manquante" },
+        {
+          error:
+            "Configure GROK_API_KEY ou FAL_API_KEY dans .env.local pour l'aperçu voix.",
+        },
         { status: 500 }
       );
     }
 
     const demoText = DEMO_TEXTS[category || ""] || DEMO_TEXTS.default;
-    const voice = normalizeGrokVoiceId(voiceName);
+    const { uiId } = resolveTtsVoiceIds(voiceName);
+    console.log("[VOICE-PREVIEW] Voix:", voiceName, "→", uiId);
 
-    const result = await generateGrokSpeech(demoText, voice, {
+    const result = await generateSpeechWithFallback(demoText, voiceName || uiId, {
       emotion: "excited",
       narrativeRole: "solution",
     });

@@ -1,91 +1,70 @@
 import { looksLikeMp3 } from "@/lib/audio";
 import { parseFalBillingError } from "@/lib/klingFal";
 
-export const ELEVENLABS_VOICES = [
-  {
-    id: "Rachel",
-    name: "Rachel",
-    gender: "female" as const,
-    description: "Chaleureuse & naturelle",
-    emoji: "👩",
-    tags: ["beauté", "lifestyle"],
-  },
-  {
-    id: "Bella",
-    name: "Bella",
-    gender: "female" as const,
-    description: "Douce & persuasive",
-    emoji: "🌸",
-    tags: ["luxe", "beauté"],
-  },
-  {
-    id: "Elli",
-    name: "Elli",
-    gender: "female" as const,
-    description: "Jeune & énergique",
-    emoji: "✨",
-    tags: ["sport", "mode"],
-  },
-  {
-    id: "Domi",
-    name: "Domi",
-    gender: "female" as const,
-    description: "Claire & dynamique",
-    emoji: "💁‍♀️",
-    tags: ["tech", "gadgets"],
-  },
-  {
-    id: "Antoni",
-    name: "Antoni",
-    gender: "male" as const,
-    description: "Posé & professionnel",
-    emoji: "🎙️",
-    tags: ["business", "tech"],
-  },
-  {
-    id: "Josh",
-    name: "Josh",
-    gender: "male" as const,
-    description: "Jeune & dynamique",
-    emoji: "🧑",
-    tags: ["sport", "gaming"],
-  },
-  {
-    id: "Arnold",
-    name: "Arnold",
-    gender: "male" as const,
-    description: "Grave & autoritaire",
-    emoji: "💪",
-    tags: ["sport", "fitness"],
-  },
-  {
-    id: "Adam",
-    name: "Adam",
-    gender: "male" as const,
-    description: "Profond & dramatique",
-    emoji: "🎭",
-    tags: ["luxe", "premium"],
-  },
-];
+/**
+ * Voix VALIDES de l'endpoint fal `fal-ai/elevenlabs/tts/eleven-v3`.
+ * (param attendu = `voice`, pas `voice_id`)
+ * Liste officielle : Aria, Roger, Sarah, Laura, Charlie, George, Callum,
+ * River, Liam, Charlotte, Alice, Matilda, Will, Jessica, Eric, Chris,
+ * Brian, Daniel, Lily, Bill.
+ */
+const VALID_ELEVEN_VOICES = [
+  "Aria",
+  "Roger",
+  "Sarah",
+  "Laura",
+  "Charlie",
+  "George",
+  "Callum",
+  "River",
+  "Liam",
+  "Charlotte",
+  "Alice",
+  "Matilda",
+  "Will",
+  "Jessica",
+  "Eric",
+  "Chris",
+  "Brian",
+  "Daniel",
+  "Lily",
+  "Bill",
+] as const;
 
-const VOICE_ID_SET = new Set(ELEVENLABS_VOICES.map((v) => v.id));
+const VOICE_ID_SET = new Set<string>(VALID_ELEVEN_VOICES);
+
+/** ID voix UI (lib/voices.ts) → voix fal ElevenLabs valide et DISTINCTE */
+const UI_TO_ELEVEN: Record<string, string> = {
+  eve: "Sarah", // F chaleureuse
+  aria: "Aria", // F claire dynamique
+  luna: "Charlotte", // F douce
+  nova: "Laura", // F énergique
+  leo: "Liam", // H jeune dynamique
+  rex: "George", // H grave autoritaire
+  atlas: "Will", // H profond premium
+  orion: "Roger", // H posé professionnel
+  // anciens alias éventuels
+  ara: "Sarah",
+  sal: "Laura",
+};
+
+/** Liste exposée (compat) — basée sur le mapping UI */
+export const ELEVENLABS_VOICES = Object.entries(UI_TO_ELEVEN)
+  .filter(([id]) => ["eve", "aria", "luna", "nova", "leo", "rex", "atlas", "orion"].includes(id))
+  .map(([id, falVoice]) => ({ id, falVoice }));
 
 export function normalizeElevenVoiceId(voiceName?: string): string {
-  if (!voiceName) return "Rachel";
-  const exact = ELEVENLABS_VOICES.find((v) => v.id === voiceName);
-  if (exact) return exact.id;
-  const ci = ELEVENLABS_VOICES.find(
-    (v) => v.id.toLowerCase() === voiceName.toLowerCase()
+  if (!voiceName) return "Sarah";
+  const lower = voiceName.trim().toLowerCase();
+
+  if (UI_TO_ELEVEN[lower]) return UI_TO_ELEVEN[lower];
+
+  const validMatch = VALID_ELEVEN_VOICES.find(
+    (v) => v.toLowerCase() === lower
   );
-  if (ci) return ci.id;
-  const legacy: Record<string, string> = {
-    ara: "Rachel",
-    eve: "Elli",
-    rex: "Antoni",
-    leo: "Adam",
-    sal: "Domi",
-  };
-  return legacy[voiceName.toLowerCase()] || "Rachel";
+  if (validMatch) return validMatch;
+
+  return "Sarah";
 }
 
 /** Préfixe ElevenLabs uniquement — le texte du script n'est pas modifié */
@@ -138,6 +117,14 @@ export async function generateElevenLabsSpeech(
     throw new Error(`Voix invalide: ${voiceId}`);
   }
 
+  console.log(
+    "[ELEVENLABS] Requête fal — voice:",
+    finalVoice,
+    "(demandée:",
+    voiceId,
+    ")"
+  );
+
   const response = await fetch(
     "https://fal.run/fal-ai/elevenlabs/tts/eleven-v3",
     {
@@ -148,9 +135,10 @@ export async function generateElevenLabsSpeech(
       },
       body: JSON.stringify({
         text,
-        voice_id: finalVoice,
+        voice: finalVoice,
+        stability: 0.5,
         language_code: "fr",
-        output_format: "mp3_44100_128",
+        apply_text_normalization: "auto",
       }),
     }
   );

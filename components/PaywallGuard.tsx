@@ -2,9 +2,41 @@
 
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { authFetch } from "@/lib/authFetch";
 
 /** Routes accessibles sans abonnement actif (sinon : boucle de redirection). */
 const ALLOWED_PATHS = ["/plans"];
+
+/**
+ * Au retour de Stripe Checkout (success_url contient ?session_id=...), confirme
+ * l'abonnement côté serveur avant de vérifier le plan. Sans ça, le garde
+ * redirigerait vers /plans avant que les crédits ne soient octroyés.
+ */
+async function confirmCheckoutIfNeeded(): Promise<void> {
+  if (typeof window === "undefined") return;
+  const params = new URLSearchParams(window.location.search);
+  const sessionId = params.get("session_id");
+  if (!sessionId) return;
+
+  try {
+    await authFetch("/api/stripe/confirm", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sessionId }),
+    });
+  } catch {
+    // Le webhook reste le filet de sécurité.
+  } finally {
+    // Nettoie l'URL pour ne pas reconfirmer à chaque navigation.
+    params.delete("session_id");
+    params.delete("checkout");
+    const clean =
+      window.location.pathname +
+      (params.toString() ? `?${params.toString()}` : "");
+    window.history.replaceState({}, "", clean);
+    window.dispatchEvent(new Event("credits-updated"));
+  }
+}
 
 type GuardStatus = "loading" | "ok" | "redirect";
 
@@ -34,7 +66,8 @@ export function PaywallGuard({ children }: { children: React.ReactNode }) {
 
     (async () => {
       try {
-        const res = await fetch("/api/credits");
+        await confirmCheckoutIfNeeded();
+        const res = await authFetch("/api/credits");
 
         if (res.status === 401 || res.status === 403) {
           if (!active) return;

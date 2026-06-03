@@ -1,6 +1,7 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
 let adminClient: SupabaseClient | null = null;
+let browserClient: SupabaseClient | null = null;
 
 export function getSupabaseAdmin(): SupabaseClient | null {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -13,11 +14,26 @@ export function getSupabaseAdmin(): SupabaseClient | null {
   return adminClient;
 }
 
-export function getSupabaseBrowser() {
+/**
+ * Client navigateur en singleton : indispensable pour que la session (token
+ * d'accès) persiste en mémoire et soit partagée entre login, hooks et
+ * authFetch. Recréer un client à chaque appel perdrait la session en mémoire.
+ */
+export function getSupabaseBrowser(): SupabaseClient | null {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !key) return null;
-  return createClient(url, key);
+
+  if (!browserClient) {
+    browserClient = createClient(url, key, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+      },
+    });
+  }
+  return browserClient;
 }
 
 export async function deductCredits(

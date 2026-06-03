@@ -1,5 +1,34 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
+import { getSupabaseAdmin } from "@/lib/supabase";
+
+/** Évite de répéter l'upsert pour un même utilisateur dans cette instance. */
+const ensuredUsers = new Set<string>();
+
+/**
+ * Garantit qu'une ligne `users` existe pour cet utilisateur Supabase Auth.
+ * Sans cette ligne, les crédits et l'activation d'abonnement (webhook Stripe
+ * qui fait `update().eq("id", userId)`) n'ont aucune ligne à mettre à jour.
+ * `ignoreDuplicates` évite d'écraser les crédits/plan déjà présents.
+ */
+async function ensureUserRow(id: string, email: string | null): Promise<void> {
+  if (ensuredUsers.has(id)) return;
+  const admin = getSupabaseAdmin();
+  if (!admin) return;
+  try {
+    // plan: null et credits: 0 explicites pour ne pas hériter d'un éventuel
+    // DEFAULT 'free' hérité d'un ancien schéma (viole users_plan_check).
+    await admin
+      .from("users")
+      .upsert(
+        { id, email: email ?? `${id}@users.noemail`, plan: null, credits: 0 },
+        { onConflict: "id", ignoreDuplicates: true }
+      );
+    ensuredUsers.add(id);
+  } catch {
+    // Non bloquant : la ligne existe probablement déjà.
+  }
+}
 
 /** Résout l'utilisateur API (Bearer Supabase, ou CREDITS_DEV_USER_ID en dev). */
 export async function getApiUserId(req: NextRequest): Promise<string | null> {
@@ -13,7 +42,10 @@ export async function getApiUserId(req: NextRequest): Promise<string | null> {
       const {
         data: { user },
       } = await client.auth.getUser(token);
-      if (user?.id) return user.id;
+      if (user?.id) {
+        await ensureUserRow(user.id, user.email ?? null);
+        return user.id;
+      }
     }
   }
 

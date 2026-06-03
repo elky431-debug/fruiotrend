@@ -1,16 +1,43 @@
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+import { resolveFfmpegPath } from "@/lib/ffmpeg";
 import { extractVideoUrl } from "@/lib/klingFal";
 
-export const LIPSYNC_MODEL = "fal-ai/latentsync";
+const execFileAsync = promisify(execFile);
+
+export const LIPSYNC_MODELS = {
+  wav2lip: "fal-ai/wav2lip",
+  syncLipsync: "fal-ai/sync-lipsync",
+} as const;
+
+export const LIPSYNC_MODEL = LIPSYNC_MODELS.wav2lip;
 export const LIPSYNC_QUEUE = `https://queue.fal.run/${LIPSYNC_MODEL}`;
 
-export async function uploadAudioToFal(
+/**
+ * Lip sync fal (sync-lipsync en priorité) activé pour tous les types, y
+ * compris Pixar/appli/influenceur : c'est le seul moyen que la bouche dise
+ * exactement le mot au bon moment. En cas d'échec du modèle, la route retombe
+ * automatiquement sur un mux ffmpeg.
+ */
+export function shouldUseFalLipsync(opts?: {
+  productType?: string;
+  template?: string;
+  skipLipsync?: boolean;
+}): boolean {
+  if (opts?.skipLipsync) return false;
+  return true;
+}
+
+async function uploadBase64ToFal(
   apiKey: string,
-  audioBase64: string
+  base64: string,
+  fileName: string,
+  contentType: string
 ): Promise<string | null> {
   const body = JSON.stringify({
-    file_name: `voice-${Date.now()}.mp3`,
-    content_type: "audio/mpeg",
-    data: audioBase64,
+    file_name: fileName,
+    content_type: contentType,
+    data: base64,
   });
   const headers = {
     "Content-Type": "application/json",
@@ -33,6 +60,70 @@ export async function uploadAudioToFal(
     }
   }
   return null;
+}
+
+export async function uploadAudioToFal(
+  apiKey: string,
+  audioBase64: string
+): Promise<string | null> {
+  return uploadBase64ToFal(
+    apiKey,
+    audioBase64,
+    `voice-${Date.now()}.mp3`,
+    "audio/mpeg"
+  );
+}
+
+export async function uploadVideoToFal(
+  apiKey: string,
+  videoBuffer: Buffer
+): Promise<string | null> {
+  return uploadBase64ToFal(
+    apiKey,
+    videoBuffer.toString("base64"),
+    `lipsync-${Date.now()}.mp4`,
+    "video/mp4"
+  );
+}
+
+/** Mux vidéo + voiceover alignés (piste audio du modèle ignorée) */
+export async function muxVideoWithVoiceover(
+  videoPath: string,
+  audioPath: string,
+  outputPath: string
+): Promise<void> {
+  const ffmpeg = resolveFfmpegPath();
+  const common = [
+    "-y",
+    "-i",
+    videoPath,
+    "-i",
+    audioPath,
+    "-map",
+    "0:v:0",
+    "-map",
+    "1:a:0",
+    "-c:a",
+    "aac",
+    "-b:a",
+    "128k",
+    "-shortest",
+  ];
+
+  try {
+    await execFileAsync(ffmpeg, [...common, "-c:v", "copy", outputPath]);
+  } catch {
+    await execFileAsync(ffmpeg, [
+      ...common,
+      "-c:v",
+      "libx264",
+      "-preset",
+      "fast",
+      "-crf",
+      "23",
+      outputPath,
+    ]);
+  }
 }
 
 export async function pollLipsyncResult(

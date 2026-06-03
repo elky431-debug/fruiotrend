@@ -50,6 +50,20 @@ export function mapVideoDurationSeconds(seconds?: number): number {
   );
 }
 
+export const VIDEO_CAMERA_AUDIO_RULES = `
+
+CAMERA MOVEMENT:
+- STATIC camera — absolutely NO zoom in, NO zoom out
+- NO slow push in, NO dolly movement, NO camera drift
+- The camera stays completely fixed throughout the entire video
+- Only the character moves, not the camera
+
+AUDIO:
+- NO background music
+- NO soundtrack
+- NO ambient music
+- Silence only — the voiceover will be added separately`;
+
 const STRICT_HUMAN_ANATOMY_RULES = `
 STRICT ANATOMY RULES:
 - The character has EXACTLY TWO arms and TWO hands — no more, no less
@@ -79,9 +93,9 @@ export function enrichVideoPrompt(
     ? ` The character speaks clearly in ${lang} (${voiceStyle} voice), dialogue: "${dialogue.slice(0, 180)}". Lip-synced mouth (${mouth}).`
     : ` Character speaks in ${lang} with ${voiceStyle} voice, mouth (${mouth}) animated as if talking.`;
   const anatomy = opts?.humanPresenter ? STRICT_HUMAN_ANATOMY_RULES : "";
-  return `${core}.${speechBlock} Cinematic Pixar 3D ad, 9:16 vertical, synchronized native audio.${anatomy}`.slice(
+  return `${core}.${speechBlock} Cinematic Pixar 3D ad, 9:16 vertical, lip-sync mouth only.${anatomy}${VIDEO_CAMERA_AUDIO_RULES}`.slice(
     0,
-    650
+    750
   );
 }
 
@@ -110,7 +124,7 @@ export function buildVideoInput(
     aspect_ratio: "9:16",
     resolution: "1080p",
     fps: 24,
-    generate_audio: true,
+    generate_audio: false,
   };
 }
 

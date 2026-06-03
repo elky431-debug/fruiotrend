@@ -19,6 +19,8 @@ export interface ProductImageAsset {
   url: string;
 }
 
+export type ProductType = "product" | "app";
+
 export interface ProductInput {
   name: string;
   description: string;
@@ -32,6 +34,14 @@ export interface ProductInput {
   packagingImage?: ProductImageAsset | null;
   influencerMode?: "ai" | "photo";
   influencerImage?: ProductImageAsset | null;
+  /** Photo influenceur : garder le décor d'origine ("keep") ou le changer ("change") */
+  influencerBackgroundMode?: "keep" | "change";
+  /** "product" (défaut) ou "app" — pub pour une appli/site (personnage tient un smartphone) */
+  productType?: ProductType;
+  /** Style de script choisi côté pub appli (preset id ou "custom") */
+  scriptMode?: string;
+  /** Voiceover saisi manuellement (mode "custom") */
+  customVoiceover?: string;
 }
 
 export interface AdCharacter {

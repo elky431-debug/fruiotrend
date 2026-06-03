@@ -1,16 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getApiUserId } from "@/lib/auth-api";
 import {
   getSignedAssetUrl,
   getSupabase,
   hasSupabaseStorageEnv,
 } from "@/lib/storage";
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   if (!hasSupabaseStorageEnv) {
     return NextResponse.json({ error: "Supabase non configuré" }, { status: 500 });
+  }
+
+  const resolvedUserId = await getApiUserId(req);
+  if (!resolvedUserId || !UUID_RE.test(resolvedUserId)) {
+    return NextResponse.json({ error: "Non connecté" }, { status: 401 });
   }
 
   const supabase = getSupabase();
@@ -18,6 +27,7 @@ export async function GET(
     .from("ads")
     .select("*")
     .eq("id", params.id)
+    .eq("user_id", resolvedUserId)
     .single();
 
   if (error || !data) {
@@ -56,14 +66,32 @@ export async function GET(
 }
 
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   if (!hasSupabaseStorageEnv) {
     return NextResponse.json({ error: "Supabase non configuré" }, { status: 500 });
   }
 
+  const resolvedUserId = await getApiUserId(req);
+  if (!resolvedUserId || !UUID_RE.test(resolvedUserId)) {
+    return NextResponse.json({ error: "Non connecté" }, { status: 401 });
+  }
+
   const supabase = getSupabase();
+
+  // Vérifie la propriété avant toute suppression de fichiers.
+  const { data: owned } = await supabase
+    .from("ads")
+    .select("id")
+    .eq("id", params.id)
+    .eq("user_id", resolvedUserId)
+    .single();
+
+  if (!owned) {
+    return NextResponse.json({ error: "Pub non trouvée" }, { status: 404 });
+  }
+
   const buckets = [
     "product-images",
     "ad-scenes",
@@ -82,7 +110,11 @@ export async function DELETE(
     })
   );
 
-  const { error } = await supabase.from("ads").delete().eq("id", params.id);
+  const { error } = await supabase
+    .from("ads")
+    .delete()
+    .eq("id", params.id)
+    .eq("user_id", resolvedUserId);
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

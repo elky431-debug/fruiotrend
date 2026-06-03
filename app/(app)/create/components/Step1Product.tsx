@@ -58,6 +58,7 @@ const AUDIENCES = [
 
 interface Props {
   onNext: (data: ProductInput) => void;
+  onWriteOwnScript?: (data: ProductInput) => void;
   loading?: boolean;
   initial?: ProductInput | null;
 }
@@ -76,7 +77,12 @@ function previewsFromImages(
   );
 }
 
-export default function Step1Product({ onNext, loading, initial }: Props) {
+export default function Step1Product({
+  onNext,
+  onWriteOwnScript,
+  loading,
+  initial,
+}: Props) {
   const initialDuration = initial?.duration ?? 15;
   const [productName, setProductName] = useState(initial?.name ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
@@ -117,6 +123,9 @@ export default function Step1Product({ onNext, loading, initial }: Props) {
   const [influencerImage, setInfluencerImage] = useState<
     ProductInput["influencerImage"]
   >(initial?.influencerImage ?? null);
+  const [influencerBackgroundMode, setInfluencerBackgroundMode] = useState<
+    "keep" | "change"
+  >(initial?.influencerBackgroundMode ?? "change");
   const [influencerUploading, setInfluencerUploading] = useState(false);
   const [influencerError, setInfluencerError] = useState<string | null>(null);
   const fileInputId = useId();
@@ -143,6 +152,7 @@ export default function Step1Product({ onNext, loading, initial }: Props) {
     setPackagingImage(initial.packagingImage ?? null);
     setInfluencerMode(initial.influencerMode ?? "ai");
     setInfluencerImage(initial.influencerImage ?? null);
+    setInfluencerBackgroundMode(initial.influencerBackgroundMode ?? "change");
   }, [initial]);
 
   const selectTemplate = (id: AdTemplate) => {
@@ -309,26 +319,37 @@ export default function Step1Product({ onNext, loading, initial }: Props) {
     images.length > 0 &&
     Boolean(template);
 
+  const buildInput = (): ProductInput => ({
+    name: productName.trim(),
+    description: description.trim(),
+    targetAudience: audience,
+    adGoal: goal,
+    template,
+    nScenes,
+    duration,
+    images,
+    imagesMimeType: mimeTypes,
+    packagingImage: packagingImage ?? null,
+    influencerMode: template === "influencer" ? influencerMode : undefined,
+    influencerImage:
+      template === "influencer" && influencerMode === "photo"
+        ? influencerImage ?? null
+        : null,
+    influencerBackgroundMode:
+      template === "influencer" && influencerMode === "photo"
+        ? influencerBackgroundMode
+        : undefined,
+  });
+
   const submit = () => {
     if (!canContinue || loading) return;
     console.log("[STEP1] Génération — template:", template);
-    onNext({
-      name: productName.trim(),
-      description: description.trim(),
-      targetAudience: audience,
-      adGoal: goal,
-      template,
-      nScenes,
-      duration,
-      images,
-      imagesMimeType: mimeTypes,
-      packagingImage: packagingImage ?? null,
-      influencerMode: template === "influencer" ? influencerMode : undefined,
-      influencerImage:
-        template === "influencer" && influencerMode === "photo"
-          ? influencerImage ?? null
-          : null,
-    });
+    onNext(buildInput());
+  };
+
+  const writeOwn = () => {
+    if (!canContinue || loading) return;
+    onWriteOwnScript?.(buildInput());
   };
 
   const selectedMeta = getTemplateConfig(template);
@@ -936,6 +957,81 @@ export default function Step1Product({ onNext, loading, initial }: Props) {
                   </label>
                 ))}
 
+              {influencerMode === "photo" && influencerImage && (
+                <div style={{ marginTop: 16 }}>
+                  <p
+                    style={{
+                      color: "var(--text2)",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      marginBottom: 8,
+                    }}
+                  >
+                    Décor de la pub
+                  </p>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    {(
+                      [
+                        {
+                          mode: "keep" as const,
+                          label: "🖼 Garder le décor de la photo",
+                          sub: "Même fond que ta photo",
+                        },
+                        {
+                          mode: "change" as const,
+                          label: "🎬 Nouveau décor",
+                          sub: "Décor généré selon le produit",
+                        },
+                      ]
+                    ).map((opt) => {
+                      const active = influencerBackgroundMode === opt.mode;
+                      return (
+                        <button
+                          key={opt.mode}
+                          type="button"
+                          onClick={() => setInfluencerBackgroundMode(opt.mode)}
+                          style={{
+                            flex: 1,
+                            textAlign: "left",
+                            padding: "10px 12px",
+                            borderRadius: 10,
+                            cursor: "pointer",
+                            fontFamily: "inherit",
+                            border: `1px solid ${
+                              active ? "#E8313A" : "var(--border)"
+                            }`,
+                            background: active
+                              ? "rgba(232,49,58,0.12)"
+                              : "transparent",
+                            color: "var(--text)",
+                          }}
+                        >
+                          <span
+                            style={{
+                              display: "block",
+                              fontSize: 13,
+                              fontWeight: 600,
+                            }}
+                          >
+                            {opt.label}
+                          </span>
+                          <span
+                            style={{
+                              display: "block",
+                              fontSize: 11,
+                              color: "var(--text2)",
+                              marginTop: 2,
+                            }}
+                          >
+                            {opt.sub}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {influencerError && (
                 <p
                   role="alert"
@@ -1084,9 +1180,26 @@ export default function Step1Product({ onNext, loading, initial }: Props) {
         {loading
           ? "Génération du script…"
           : canContinue
-            ? `✦ Générer la pub « ${selectedMeta.name} » →`
+            ? `✦ Générer la pub « ${selectedMeta.name} » avec l'IA →`
             : "Photo + description requises"}
       </button>
+
+      {onWriteOwnScript && (
+        <button
+          type="button"
+          onClick={writeOwn}
+          disabled={!canContinue || loading}
+          className="btn-sec reveal-item"
+          style={{
+            width: "100%",
+            justifyContent: "center",
+            opacity: !canContinue || loading ? 0.6 : 1,
+            animationDelay: "620ms",
+          }}
+        >
+          ✍️ Écrire mon script moi-même
+        </button>
+      )}
     </div>
   );
 }

@@ -29,6 +29,31 @@ function cleanup(dir: string) {
   } catch {}
 }
 
+/**
+ * Mesure la durée d'un média en secondes via `ffmpeg -i` (parse stderr).
+ * Pas de ffprobe disponible — ffmpeg sort en erreur sans fichier de sortie
+ * mais imprime "Duration: HH:MM:SS.ss" sur stderr.
+ */
+async function probeDurationSeconds(
+  ffmpeg: string,
+  file: string
+): Promise<number | null> {
+  try {
+    await execFileAsync(ffmpeg, ["-i", file]);
+    return null;
+  } catch (e) {
+    const stderr =
+      e && typeof e === "object" && "stderr" in e
+        ? String((e as { stderr?: unknown }).stderr ?? "")
+        : "";
+    const m = stderr.match(/Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)/);
+    if (!m) return null;
+    const seconds =
+      Number(m[1]) * 3600 + Number(m[2]) * 60 + parseFloat(m[3]);
+    return Number.isFinite(seconds) && seconds > 0 ? seconds : null;
+  }
+}
+
 async function assembleClipUrlsOnly(clipUrls: string[]) {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "pubmoi-clips-"));
   const ffmpeg = resolveFfmpegPath();
@@ -182,53 +207,39 @@ export async function POST(req: NextRequest) {
       const vf =
         "scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280";
 
-      let useEmbedded = scene.embeddedAudio === true;
-
-      if (useEmbedded) {
-        try {
-          await execFileAsync(ffmpeg, [
-            "-y",
-            "-i",
-            videoPath,
-            "-map",
-            "0:v:0",
-            "-map",
-            "0:a:0",
-            "-vf",
-            vf,
-            "-c:v",
-            "libx264",
-            "-preset",
-            "fast",
-            "-crf",
-            "23",
-            "-r",
-            "30",
-            "-c:a",
-            "aac",
-            "-b:a",
-            "128k",
-            "-shortest",
-            clipPath,
-          ]);
-        } catch (muxErr) {
-          console.warn(
-            `[ASSEMBLE] Scène ${i + 1}: embedded audio échoué, fallback mux voix`,
-            muxErr instanceof Error ? muxErr.message : muxErr
-          );
-          useEmbedded = false;
-          try {
-            fs.unlinkSync(clipPath);
-          } catch {
-            /* partial clip */
-          }
-        }
-      }
-
-      if (!useEmbedded && scene.audioBase64) {
+      if (scene.audioBase64) {
         const rawAudio = Buffer.from(scene.audioBase64, "base64");
         const wavBuffer = ensureWavBuffer(rawAudio, scene.audioMimeType);
         fs.writeFileSync(audioPath, wavBuffer);
+
+        // Choix du filtre vidéo :
+        // - Vidéo déjà synchronisée (lip sync) : la bouche est déjà calée sur
+        //   la voix → on NE time-stretch PAS, simple mux 1:1 + tpad sécurité.
+        // - Vidéo muette (fallback) : on cale la durée de la vidéo sur celle de
+        //   la voix (setpts) pour que le perso "parle" pendant toute la voix.
+        let vfWithPad = `${vf},tpad=stop_mode=clone:stop_duration=2`;
+        if (!scene.embeddedAudio) {
+          const audioDur = await probeDurationSeconds(ffmpeg, audioPath);
+          const videoDur = await probeDurationSeconds(ffmpeg, videoPath);
+          vfWithPad = `${vf},tpad=stop_mode=clone:stop_duration=30`;
+          if (audioDur && videoDur && audioDur > 0.3 && videoDur > 0.3) {
+            const ratio = audioDur / videoDur;
+            if (ratio >= 0.5 && ratio <= 2.5) {
+              vfWithPad = `${vf},setpts=${ratio.toFixed(
+                4
+              )}*PTS,tpad=stop_mode=clone:stop_duration=2`;
+              console.log(
+                `[ASSEMBLE] Scène ${i + 1}: time-stretch vidéo ×${ratio.toFixed(
+                  2
+                )} (voix ${audioDur.toFixed(1)}s / vidéo ${videoDur.toFixed(1)}s)`
+              );
+            } else if (ratio > 2.5) {
+              vfWithPad = `${vf},tpad=stop_mode=clone:stop_duration=30`;
+            } else {
+              vfWithPad = vf;
+            }
+          }
+        }
 
         try {
           await execFileAsync(ffmpeg, [
@@ -242,9 +253,7 @@ export async function POST(req: NextRequest) {
             "-map",
             "1:a:0",
             "-vf",
-            vf,
-            "-af",
-            "apad",
+            vfWithPad,
             "-c:v",
             "libx264",
             "-preset",
@@ -267,9 +276,9 @@ export async function POST(req: NextRequest) {
             }`
           );
         }
-      } else if (!useEmbedded) {
+      } else {
         console.warn(
-          `[ASSEMBLE] Scène ${i} sans voiceover TTS — export vidéo muette`
+          `[ASSEMBLE] Scène ${i} sans voiceover TTS — export vidéo muette (audio modèle ignoré)`
         );
         await execFileAsync(ffmpeg, [
           "-y",

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { authFetch } from "@/lib/authFetch";
 
 export type CreditsState = {
   credits: number | null;
@@ -22,7 +23,7 @@ export function useCredits(pollMs = 30000): CreditsState {
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch("/api/credits");
+      const res = await authFetch("/api/credits");
       if (!res.ok) return;
       const data = await res.json();
       if (typeof data.credits === "number") setCredits(data.credits);

@@ -1,11 +1,15 @@
 import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
+import { getApiUserId } from "@/lib/auth-api";
 import {
   getSupabase,
   hasSupabaseStorageEnv,
   uploadBase64,
   uploadDataUrl,
 } from "@/lib/storage";
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function POST(req: NextRequest) {
   try {
@@ -19,6 +23,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // L'utilisateur est résolu depuis le token (et non depuis le body) pour
+    // que chaque pub soit bien rattachée à son compte → "Mes pubs".
+    const resolvedUserId = await getApiUserId(req);
+    const ownerId =
+      resolvedUserId && UUID_RE.test(resolvedUserId) ? resolvedUserId : null;
+
     const supabase = getSupabase();
     const {
       title,
@@ -31,7 +41,6 @@ export async function POST(req: NextRequest) {
       finalVideoUrl,
       productImages,
       productImagesMimeType,
-      userId,
     } = await req.json();
 
     const adId = randomUUID();
@@ -122,7 +131,7 @@ export async function POST(req: NextRequest) {
       .from("ads")
       .insert({
         id: adId,
-        user_id: userId || null,
+        user_id: ownerId,
         title,
         hook,
         cta,
@@ -139,7 +148,17 @@ export async function POST(req: NextRequest) {
 
     if (error) {
       console.error("DB insert error:", error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      const tableMissing =
+        error.code === "PGRST205" ||
+        /relation .*ads.* does not exist|find the table/i.test(error.message);
+      return NextResponse.json(
+        {
+          error: tableMissing
+            ? "La table « ads » n'existe pas encore dans Supabase. Exécute supabase/setup.sql dans le SQL Editor de Supabase."
+            : error.message,
+        },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({ id: adId, success: true, ad: data });

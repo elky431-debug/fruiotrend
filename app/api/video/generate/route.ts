@@ -17,10 +17,15 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const regenerate = Boolean((body as { regenerate?: boolean }).regenerate);
+    // Segment supplémentaire d'une même scène longue (>20s) : on ne débite que
+    // la vidéo (la voix + le lip sync ne sont facturés qu'une fois par scène).
+    const segmentExtra = Boolean((body as { segmentExtra?: boolean }).segmentExtra);
 
-    const creditGuard = regenerate
-      ? await requireCredits(req, "video", { regenerate: true })
-      : await requireCreditsMulti(req, ["video", "voice", "lipsync"]);
+    const creditGuard = segmentExtra
+      ? await requireCredits(req, "video")
+      : regenerate
+        ? await requireCredits(req, "video", { regenerate: true })
+        : await requireCreditsMulti(req, ["video", "voice", "lipsync"]);
     if (creditGuard instanceof NextResponse) return creditGuard;
 
     const {
@@ -49,7 +54,7 @@ export async function POST(req: NextRequest) {
       imageBase64
     );
     console.log(
-      `[VIDEO/GENERATE] Image prête en ${Date.now() - started}ms — LTX 2.3 Fast + audio natif...`
+      `[VIDEO/GENERATE] Image prête en ${Date.now() - started}ms — LTX 2.3 Fast (vidéo muette)...`
     );
     if (voiceover) {
       console.log("[VIDEO/GENERATE] Voiceover:", String(voiceover).slice(0, 80));
@@ -69,7 +74,7 @@ export async function POST(req: NextRequest) {
         buildVideoInput(
           finalImageUrl,
           prompt ||
-            "Pixar 3D product ad, subtle camera move, 9:16 vertical, cinematic",
+            "Pixar 3D product ad, static camera, 9:16 vertical, cinematic",
           durationSeconds,
           mouthExpression,
           {
@@ -125,7 +130,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       videoUrl,
       durationMs: totalMs,
-      embeddedAudio: true,
+      embeddedAudio: false,
       provider: "ltx-2.3-fast",
     });
   } catch (error) {

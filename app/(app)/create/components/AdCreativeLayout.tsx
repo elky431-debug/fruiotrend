@@ -1,12 +1,16 @@
 "use client";
 
-import { useState } from "react";
-import { normalizeAdScript } from "@/lib/adScenes";
+import { Fragment, useState } from "react";
+import { authFetch } from "@/lib/authFetch";
+import { normalizeAdScript, resolveSceneCount } from "@/lib/adScenes";
 import type { AdScript, ProductInput } from "@/types/ad";
 import Step1Product from "./Step1Product";
+import AppProductStep from "./AppProductStep";
 import Step2Script from "./Step2Script";
 import Step3Images from "./Step3Images";
 import Step4Video from "./Step4Video";
+
+type ProductMode = "product" | "app";
 
 const TABS = [
   { num: 1 as const, label: "Produit", api: "" },
@@ -24,6 +28,8 @@ export default function CreatorLayout() {
   const [saved, setSaved] = useState(false);
   const [scriptLoading, setScriptLoading] = useState(false);
   const [scriptError, setScriptError] = useState("");
+  const [customMode, setCustomMode] = useState(false);
+  const [productMode, setProductMode] = useState<ProductMode>("product");
 
   const goTab = (n: 1 | 2 | 3 | 4) => {
     if (n === 2 && !product) return;
@@ -38,7 +44,7 @@ export default function CreatorLayout() {
     setSaved(false);
 
     try {
-      const res = await fetch("/api/script", {
+      const res = await authFetch("/api/script", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ product: input }),
@@ -74,38 +80,71 @@ export default function CreatorLayout() {
     }
   };
 
+  /** Passe directement à l'éditeur de script manuel, sans appeler l'IA. */
+  const startCustomScript = (input: ProductInput) => {
+    const count = resolveSceneCount(input);
+    const blankScenes = Array.from({ length: count }, (_, i) => ({
+      number: i + 1,
+      title: `Scène ${i + 1}`,
+      narrative_role: "solution" as const,
+      background: "",
+      visual_description: "",
+      character_action: "",
+      voiceover: "",
+      voiceover_word_count: 0,
+      duration_seconds: Math.round((input.duration || 15) / count),
+      mouth_expression: "open mouth speaking",
+      emotion: "excited",
+      subtitle: `SCÈNE ${i + 1}`,
+      hook: "",
+      gemini_prompt: "",
+      grok_video_prompt:
+        "Cinematic Pixar 3D product advertisement, smooth camera movement, 9:16 vertical",
+    }));
+
+    const blankScript: AdScript = {
+      title: input.name,
+      hook: "",
+      cta: "",
+      duration: `${input.duration || 15}s`,
+      productVisualDescription: "",
+      nScenes: count,
+      scenes: blankScenes,
+      character: {
+        name: input.name,
+        type: "produit",
+        description: input.description,
+        outfit: "",
+        personality: "",
+        gemini_character_prompt: "",
+      },
+    };
+
+    setScriptError("");
+    setProduct(input);
+    setScript(normalizeAdScript(blankScript, count));
+    setImages({});
+    setVideos({});
+    setCustomMode(true);
+    setTab(2);
+  };
+
   return (
-    <div>
-      <div style={{ marginBottom: 36 }}>
-        <h1
-          style={{
-            fontSize: 28,
-            fontWeight: 800,
-            letterSpacing: "-0.04em",
-            color: "var(--text)",
-            marginBottom: 6,
-          }}
-        >
-          Nouvelle pub
-        </h1>
-        <p style={{ color: "var(--text2)", fontSize: 13 }}>
-          Upload · Script IA · Visuels · Vidéo
+    <div className="create-shell">
+      <div className="create-head">
+        <span className="create-eyebrow">
+          <span className="dot" />
+          STUDIO IA
+        </span>
+        <h1 className="create-title">Crée ta pub</h1>
+        <p className="create-subtitle">
+          De l&apos;upload à la vidéo finale — script, visuels et voix générés
+          par IA.
         </p>
       </div>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(4, 1fr)",
-          background: "var(--bg1)",
-          border: "1px solid var(--border)",
-          borderRadius: 18,
-          padding: 5,
-          marginBottom: 32,
-          gap: 4,
-        }}
-      >
-        {TABS.map((t) => {
+      <div className="stepper" role="tablist" aria-label="Étapes de création">
+        {TABS.map((t, i) => {
           const active = tab === t.num;
           const done = t.num < tab;
           const locked =
@@ -114,72 +153,32 @@ export default function CreatorLayout() {
             (t.num === 4 && Object.keys(images).length === 0);
 
           return (
-            <button
-              key={t.num}
-              type="button"
-              onClick={() => goTab(t.num)}
-              disabled={locked}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 7,
-                padding: "11px 8px",
-                borderRadius: 14,
-                border: "none",
-                cursor: locked ? "not-allowed" : "pointer",
-                background: active ? "var(--bg3)" : "transparent",
-                outline: active ? "1px solid var(--border2)" : "none",
-                opacity: locked ? 0.3 : 1,
-                transition: "all 0.18s",
-              }}
-            >
-              <div
-                style={{
-                  width: 20,
-                  height: 20,
-                  borderRadius: "50%",
-                  flexShrink: 0,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 10,
-                  fontWeight: 700,
-                  background: active
-                    ? "var(--accent)"
-                    : done
-                      ? "#22c55e"
-                      : "var(--bg4)",
-                  color: active || done ? "#000" : "var(--text3)",
-                }}
-              >
-                {done && !active ? "✓" : t.num}
-              </div>
-              <span
-                style={{
-                  fontSize: 12,
-                  fontWeight: 600,
-                  color: active ? "var(--text)" : "var(--text2)",
-                }}
-              >
-                {t.label}
-              </span>
-              {active && t.api && (
+            <Fragment key={t.num}>
+              {i > 0 && (
                 <span
-                  style={{
-                    fontSize: 9,
-                    fontWeight: 700,
-                    padding: "1px 6px",
-                    borderRadius: 99,
-                    background: "var(--bg4)",
-                    color: "var(--text2)",
-                    border: "1px solid var(--border)",
-                  }}
-                >
-                  {t.api}
-                </span>
+                  className={`stepper-line${t.num <= tab ? " filled" : ""}`}
+                  aria-hidden
+                />
               )}
-            </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => goTab(t.num)}
+                disabled={locked}
+                className={`stepper-node${active ? " is-active" : ""}${
+                  done ? " is-done" : ""
+                }`}
+              >
+                <span className="stepper-node-circle">
+                  {done && !active ? "✓" : t.num}
+                </span>
+                <span className="stepper-node-label">{t.label}</span>
+                {active && t.api ? (
+                  <span className="stepper-node-api">{t.api}</span>
+                ) : null}
+              </button>
+            </Fragment>
           );
         })}
       </div>
@@ -219,22 +218,68 @@ export default function CreatorLayout() {
       )}
 
       {tab === 1 && (
-        <Step1Product
-          onNext={generateScript}
-          loading={scriptLoading}
-          initial={product}
-        />
+        <>
+          <div
+            className="seg-toggle"
+            role="tablist"
+            aria-label="Type de pub"
+          >
+            <span
+              className={`seg-toggle-thumb${
+                productMode === "app" ? " right" : ""
+              }`}
+              aria-hidden
+            />
+            {(
+              [
+                { id: "product", label: "Produit", icon: "🛍" },
+                { id: "app", label: "Appli / Site", icon: "📱" },
+              ] as const
+            ).map((m) => {
+              const active = productMode === m.id;
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setProductMode(m.id)}
+                  className={`seg-btn${active ? " is-active" : ""}`}
+                >
+                  <span>{m.icon}</span>
+                  {m.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {productMode === "product" ? (
+            <Step1Product
+              onNext={generateScript}
+              onWriteOwnScript={startCustomScript}
+              loading={scriptLoading}
+              initial={product}
+            />
+          ) : (
+            <AppProductStep
+              onNext={generateScript}
+              loading={scriptLoading}
+              initial={product}
+            />
+          )}
+        </>
       )}
 
       {tab === 2 && script && product && (
         <Step2Script
           script={script}
           product={product}
+          startInCustomMode={customMode}
           onRegenerate={() => generateScript(product)}
           regenerateLoading={scriptLoading}
           onNext={() => setTab(3)}
           onCustomScript={(custom) => {
-            setScript(normalizeAdScript(custom, 1));
+            setScript(normalizeAdScript(custom, custom.nScenes));
             setImages({});
             setVideos({});
           }}

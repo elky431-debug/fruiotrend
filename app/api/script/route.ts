@@ -342,6 +342,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (product.productType === "app") {
+      return await buildAppScriptResponse(product, apiKey);
+    }
+
     const template = normalizeAdTemplate(product.template);
     console.log("[SCRIPT] Template reçu:", template);
     const templateMeta = getTemplateConfig(template);
@@ -694,4 +698,230 @@ function defaultMouthForRole(role: string): string {
   if (role === "discovery") return "surprised O";
   if (role === "cta" || role === "solution") return "big smile";
   return "open mouth speaking";
+}
+
+/* ──────────────────────────────────────────────────────────
+   PUBS APPLI / SITE — un seul template : personnage Pixar
+   qui tient un smartphone montrant l'interface de l'appli.
+   ────────────────────────────────────────────────────────── */
+
+const APP_SCRIPT_PROMPTS: Record<string, string> = {
+  "probleme-solution": `
+Structure OBLIGATOIRE :
+SCÈNE 1 (si 2 scènes) : Accroche — décrire la douleur précise de l'utilisateur sans l'appli
+SCÈNE FINALE : L'appli résout tout en 1 phrase + CTA direct
+Exemple : "Tu passes des heures sur des tableurs ? / Je fais tout ça en 10 secondes. Télécharge-moi."`,
+  chiffres: `
+Structure OBLIGATOIRE :
+Mettre en avant UN chiffre concret (temps gagné, argent économisé, % de résultats)
+Le personnage annonce le chiffre avec enthousiasme
+Exemple : "En 30 secondes, je fais ce qui te prenait 2 heures. Essaie-moi maintenant."`,
+  curiosite: `
+Structure OBLIGATOIRE :
+Commencer par une question ou affirmation qui crée de la curiosité
+Ne pas tout révéler — donner envie de cliquer
+Exemple : "Tu connais pas encore cette appli ? Tu rates quelque chose de dingue."`,
+  temoignage: `
+Structure OBLIGATOIRE :
+Parler comme un vrai utilisateur satisfait (pas comme une pub)
+Mentionner un résultat personnel et concret
+Exemple : "Depuis que je l'utilise, j'économise 300€ par mois. C'est réel."`,
+};
+
+function buildAppSceneVisuals(appName: string) {
+  const visual = `Pixar 3D stylized human character holds a modern smartphone in both hands, facing camera. The smartphone screen is bright and clearly shows the ${appName} app interface. Enthusiastic, direct eye contact with the viewer — TikTok/UGC presenter energy.`;
+  const video = `Pixar 3D animated character holds a smartphone showing the ${appName} app interface on its bright glowing screen, speaking enthusiastically to camera, lip-synced mouth, STATIC fixed camera (no zoom), 9:16 vertical, cinematic lighting.`;
+  return { visual, video };
+}
+
+function splitVoiceoverIntoScenes(text: string, parts: number): string[] {
+  const clean = text.trim();
+  if (parts <= 1) return [clean];
+  const sentences =
+    clean.match(/[^.!?]+[.!?]*/g)?.map((s) => s.trim()).filter(Boolean) || [
+      clean,
+    ];
+  if (sentences.length <= 1) return [clean, ""].slice(0, parts);
+
+  const out: string[] = [];
+  const perPart = Math.ceil(sentences.length / parts);
+  for (let i = 0; i < parts; i++) {
+    out.push(sentences.slice(i * perPart, (i + 1) * perPart).join(" ").trim());
+  }
+  return out;
+}
+
+function buildAppCharacter(appName: string): AdCharacter {
+  return {
+    name: appName,
+    type: "personnage Pixar présentateur d'appli",
+    description:
+      "Parle à la 1ère personne comme si c'était l'appli elle-même, tient un smartphone montrant l'interface",
+    outfit: "Tenue lifestyle moderne adaptée à la cible",
+    personality: "Direct, enthousiaste, percutant",
+    gemini_character_prompt:
+      "Pixar 3D human character holding a smartphone, app UI clearly visible on screen, direct eye contact, UGC energy",
+  };
+}
+
+function countAppWords(text?: string): number {
+  return text?.trim().split(/\s+/).filter(Boolean).length || 0;
+}
+
+async function buildAppScriptResponse(
+  product: ProductInput,
+  apiKey: string
+): Promise<NextResponse> {
+  const appName = product.name.trim();
+  const nScenes = 1; // pub appli : toujours 1 seule scène, même à 30s
+  const totalDuration = [15, 30].includes(Number(product.duration))
+    ? Number(product.duration)
+    : 15;
+  const secondsPerScene = Math.floor(totalDuration / nScenes);
+  const wordsPerScene = Math.floor(secondsPerScene * 2.3 * 0.9);
+  const minWords = Math.floor(secondsPerScene * 2.0);
+  const maxWords = Math.floor(secondsPerScene * 2.5);
+  const scriptMode = product.scriptMode || "probleme-solution";
+
+  const { visual, video } = buildAppSceneVisuals(appName);
+  const background = `Modern lifestyle environment matching ${appName} app use case`;
+
+  const finalizeScene = (
+    voiceover: string,
+    index: number,
+    role: "hook" | "problem" | "solution" | "cta",
+    isLast: boolean
+  ) => {
+    const mouth = defaultMouthForRole(role);
+    return {
+      number: index + 1,
+      title: index === 0 ? "Accroche" : "Solution & CTA",
+      narrative_role: role,
+      background,
+      visual_description: visual,
+      character_action:
+        "holds smartphone showing app interface, speaks to camera",
+      voiceover: voiceover.trim(),
+      voiceover_word_count: countAppWords(voiceover),
+      duration_seconds: secondsPerScene,
+      mouth_expression: mouth,
+      emotion: index === 0 && nScenes > 1 ? "intense" : "excited",
+      grok_video_prompt: video,
+      subtitle: isLast ? "TÉLÉCHARGE MAINTENANT" : appName.toUpperCase(),
+      hook: voiceover.trim(),
+    };
+  };
+
+  let voiceovers: string[];
+
+  if (scriptMode === "custom") {
+    const custom = (product.customVoiceover || "").trim();
+    if (!custom) {
+      return NextResponse.json(
+        { error: "Voiceover manquant pour le mode script personnalisé" },
+        { status: 400 }
+      );
+    }
+    // Le script perso doit tenir dans la durée de la vidéo : on plafonne
+    // chaque scène à ~2.6 mots/s pour que la voix ne dépasse jamais le clip.
+    const maxWordsPerScene = Math.max(8, Math.round(secondsPerScene * 2.6));
+    voiceovers = splitVoiceoverIntoScenes(custom, nScenes).map((vo) => {
+      const words = vo.trim().split(/\s+/).filter(Boolean);
+      return words.length > maxWordsPerScene
+        ? words.slice(0, maxWordsPerScene).join(" ")
+        : vo;
+    });
+  } else {
+    const styleBlock =
+      APP_SCRIPT_PROMPTS[scriptMode] || APP_SCRIPT_PROMPTS["probleme-solution"];
+    const appSystemPrompt = `Tu génères des scripts de pubs pour applications mobiles/sites web.
+Le personnage parle à la 1ère personne comme si c'était L'APPLI ELLE-MÊME qui parle.
+
+APPLI : ${appName}
+DESCRIPTION : ${product.description}
+DURÉE : ${totalDuration}s — ${nScenes} scène(s) — cible ${wordsPerScene} mots/voiceover
+STYLE : ${styleBlock}
+
+RÈGLES :
+- ${minWords} à ${maxWords} mots par voiceover (cible ${wordsPerScene})
+- L'appli parle à la 1ère personne ("Je", "moi")
+- Ton direct et percutant — zéro corporate speak
+- Tutoiement, s'adresse à UNE personne (cible : ${product.targetAudience})
+
+FORMAT JSON STRICT :
+{
+  "scenes": [
+    { "voiceover": "texte français ${minWords}-${maxWords} mots" }
+  ]
+}
+Il doit y avoir EXACTEMENT ${nScenes} scène(s).`;
+
+    const client = new OpenAI({ apiKey });
+    voiceovers = [];
+    try {
+      const response = await client.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          { role: "system", content: appSystemPrompt },
+          {
+            role: "user",
+            content: `Génère le script pour l'appli "${appName}". ${product.description}. EXACTEMENT ${nScenes} scène(s), chaque voiceover entre ${minWords} et ${maxWords} mots.`,
+          },
+        ],
+        temperature: 0.75,
+        max_tokens: 800,
+        response_format: { type: "json_object" },
+      });
+      const raw = response.choices[0]?.message?.content;
+      if (raw) {
+        const parsed = JSON.parse(raw) as {
+          scenes?: Array<{ voiceover?: string }>;
+        };
+        voiceovers =
+          parsed.scenes
+            ?.map((s) => (s.voiceover || "").trim())
+            .filter(Boolean)
+            .slice(0, nScenes) || [];
+      }
+    } catch (err) {
+      console.warn("[SCRIPT/APP] GPT échec, fallback:", err);
+    }
+
+    if (voiceovers.length < nScenes) {
+      const fallback =
+        nScenes > 1
+          ? [
+              `Tu galères encore à faire ça à la main ?`,
+              `${appName} fait tout pour toi en quelques secondes. Télécharge-moi maintenant.`,
+            ]
+          : [
+              `${appName} fait tout pour toi en quelques secondes. Télécharge-moi maintenant.`,
+            ];
+      voiceovers = fallback.slice(0, nScenes);
+    }
+  }
+
+  while (voiceovers.length < nScenes) voiceovers.push("");
+
+  const scenes = voiceovers.slice(0, nScenes).map((vo, i) => {
+    const isLast = i === nScenes - 1;
+    const role: "hook" | "problem" | "solution" | "cta" =
+      nScenes === 1 ? "cta" : i === 0 ? "problem" : "cta";
+    return finalizeScene(vo, i, role, isLast);
+  });
+
+  const script = {
+    title: appName,
+    hook: scenes[0]?.voiceover || appName,
+    cta: scenes[scenes.length - 1]?.voiceover || "",
+    duration: `${totalDuration}s`,
+    totalDuration,
+    productVisualDescription: product.description.trim() || appName,
+    nScenes,
+    productType: "app" as const,
+    scenes,
+    character: buildAppCharacter(appName),
+  };
+
+  return NextResponse.json(script);
 }

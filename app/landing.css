@@ -3,7 +3,7 @@
 .landing-root {
   min-height: 100vh;
   overflow-x: hidden;
-  background: #0a0806;
+  background: #000000;
   color: #fff8f2;
   font-family: var(--font-jakarta, "Plus Jakarta Sans"), system-ui, sans-serif;
   font-size: 16px;
@@ -167,9 +167,9 @@
 }
 
 .landing-steps-section {
-  border-top: 1px solid rgba(255, 92, 157, 0.12);
-  border-bottom: 1px solid rgba(255, 92, 157, 0.12);
-  background: #14100c;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: #000000;
   padding: 4rem 1rem;
 }
 
@@ -193,8 +193,8 @@
 }
 
 .landing-step-card {
-  background: #12100d;
-  border: 1px solid rgba(255, 92, 157, 0.12);
+  background: #0a0a0a;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 18px;
   overflow: hidden;
 }
@@ -229,6 +229,128 @@
   font-size: 0.875rem;
   color: #c4b5a8;
   line-height: 1.5;
+}
+
+/* ── Schéma des étapes (icônes uniquement, sans image) ── */
+.steps-schema {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.75rem;
+  margin-top: 2.5rem;
+  text-align: left;
+}
+
+@media (min-width: 768px) {
+  .steps-schema {
+    flex-direction: row;
+    align-items: stretch;
+    gap: 0;
+  }
+}
+
+.steps-schema-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+}
+
+@media (min-width: 768px) {
+  .steps-schema-item {
+    flex-direction: row;
+  }
+}
+
+.step-node {
+  position: relative;
+  flex: 1;
+  width: 100%;
+  background: linear-gradient(165deg, rgba(20, 20, 20, 0.9), rgba(10, 10, 10, 0.96));
+  border: 1px solid rgba(255, 92, 157, 0.14);
+  border-radius: 18px;
+  padding: 1.5rem 1.25rem 1.25rem;
+  text-align: center;
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.25s ease, box-shadow 0.25s ease;
+}
+.step-node:hover {
+  transform: translateY(-4px);
+  border-color: rgba(255, 92, 157, 0.4);
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.45), 0 0 30px rgba(255, 61, 110, 0.12);
+}
+
+.step-node-icon {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  background: linear-gradient(135deg, #ff6fae 0%, #ff3d6e 45%, #e32b45 100%);
+  box-shadow: 0 8px 24px rgba(255, 61, 110, 0.4);
+}
+.step-node-icon svg {
+  width: 28px;
+  height: 28px;
+}
+
+.step-node-index {
+  position: absolute;
+  top: 1rem;
+  right: 1.1rem;
+  font-size: 2.25rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  color: rgba(255, 92, 157, 0.16);
+}
+
+.step-node-label {
+  margin-top: 1rem;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #ff5c9d;
+}
+
+.step-node-title {
+  margin-top: 0.4rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #fff8f2;
+}
+
+.step-node-desc {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  color: #c4b5a8;
+  line-height: 1.55;
+}
+
+.step-connector {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 92, 157, 0.5);
+  flex-shrink: 0;
+  transform: rotate(90deg);
+  padding: 0.15rem 0;
+}
+.step-connector svg {
+  width: 26px;
+  height: 26px;
+}
+
+@media (min-width: 768px) {
+  .step-connector {
+    transform: none;
+    padding: 0 0.4rem;
+  }
 }
 
 .landing-h1 {
@@ -303,7 +425,7 @@
 /* Témoignages */
 .landing-testimonials-section {
   padding: 4rem 1rem;
-  background: #12100d;
+  background: #000000;
 }
 
 .landing-testimonials-inner {
@@ -478,32 +600,16 @@
   }
 }
 
-/* Glows d'ambiance fixes (rouge + or de la palette) */
+/* Fond uni — pas de lueurs d'ambiance */
 .landing-root {
   position: relative;
   isolation: isolate;
 }
 
-.landing-root::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background:
-    radial-gradient(60rem 40rem at 78% -8%, rgba(227, 43, 69, 0.16), transparent 60%),
-    radial-gradient(48rem 38rem at 4% 12%, rgba(255, 92, 157, 0.1), transparent 58%),
-    radial-gradient(52rem 44rem at 50% 108%, rgba(255, 92, 122, 0.08), transparent 60%);
-}
-
-/* Grain/halo très léger pour la profondeur */
+.landing-root::before,
 .landing-root::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background: radial-gradient(120% 80% at 50% 0%, transparent 60%, rgba(10, 8, 6, 0.55) 100%);
+  display: none;
+  content: none;
 }
 
 /* ---------- Boutons ---------- */
@@ -828,50 +934,7 @@
    DRASTIC — overrides spectaculaires (mêmes couleurs/images)
    ============================================================ */
 
-/* Fond aurora animé qui respire en continu */
-.landing-root::before {
-  background:
-    radial-gradient(50rem 38rem at 80% -6%, rgba(227, 43, 69, 0.42), transparent 60%),
-    radial-gradient(42rem 36rem at 2% 10%, rgba(255, 92, 157, 0.26), transparent 58%),
-    radial-gradient(46rem 40rem at 50% 110%, rgba(255, 92, 122, 0.26), transparent 60%),
-    radial-gradient(38rem 34rem at 18% 60%, rgba(227, 43, 69, 0.16), transparent 60%),
-    #0a0806;
-  background-size: 200% 200%;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .landing-root::before {
-    animation: landing-aurora 18s ease-in-out infinite;
-  }
-}
-
-@keyframes landing-aurora {
-  0% {
-    background-position: 0% 0%, 0% 0%, 0% 0%, 0% 0%, 0 0;
-    filter: hue-rotate(0deg);
-  }
-  50% {
-    background-position: 100% 60%, 40% 100%, 100% 0%, 80% 40%, 0 0;
-    filter: hue-rotate(-12deg);
-  }
-  100% {
-    background-position: 0% 0%, 0% 0%, 0% 0%, 0% 0%, 0 0;
-    filter: hue-rotate(0deg);
-  }
-}
-
-/* Voile/contraste plus marqué */
-.landing-root::after {
-  background:
-    radial-gradient(130% 90% at 50% -10%, transparent 52%, rgba(10, 8, 6, 0.7) 100%),
-    repeating-linear-gradient(
-      0deg,
-      rgba(255, 255, 255, 0.014) 0px,
-      rgba(255, 255, 255, 0.014) 1px,
-      transparent 1px,
-      transparent 3px
-    );
-}
+/* (aurora / grain désactivés — fond noir uni) */
 
 /* ---------- HERO : texte géant + glow + dégradé animé ---------- */
 .landing-h1 {
@@ -975,8 +1038,7 @@
 
 @media (prefers-reduced-motion: no-preference) {
   .landing-root .btn-primary {
-    animation: landing-gradient-shift 5s ease infinite,
-      landing-btn-glow 3s ease-in-out infinite;
+    animation: landing-gradient-shift 5s ease infinite;
   }
 }
 
@@ -991,8 +1053,8 @@
 }
 
 .landing-root .btn-primary:hover {
-  transform: translateY(-3px) scale(1.03);
-  box-shadow: 0 16px 54px rgba(227, 43, 69, 0.7);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(227, 43, 69, 0.35);
 }
 
 /* ---------- TITRES de section : plus gros + glow ---------- */
@@ -1425,4 +1487,31 @@
   margin-top: 1.25rem;
   font-size: 0.8rem;
   color: #7a6f64;
+}
+
+/* ---------- Fond noir uniforme (sans lueurs) ---------- */
+.landing-hero-phones::before {
+  display: none;
+  content: none;
+}
+
+.landing-section,
+.landing-social-section,
+.landing-faq-section,
+.landing-cta-section {
+  background: #000000;
+}
+
+.landing-cta-band {
+  background: #0a0a0a;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: none;
+}
+
+.landing-cta-band::before {
+  display: none;
+}
+
+.landing-root .btn-primary {
+  box-shadow: 0 4px 20px rgba(227, 43, 69, 0.25);
 }

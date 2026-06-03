@@ -172,6 +172,128 @@
   line-height: 1.5;
 }
 
+/* ── Schéma des étapes (icônes uniquement, sans image) ── */
+.steps-schema {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.75rem;
+  margin-top: 2.5rem;
+  text-align: left;
+}
+
+@media (min-width: 768px) {
+  .steps-schema {
+    flex-direction: row;
+    align-items: stretch;
+    gap: 0;
+  }
+}
+
+.steps-schema-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+}
+
+@media (min-width: 768px) {
+  .steps-schema-item {
+    flex-direction: row;
+  }
+}
+
+.step-node {
+  position: relative;
+  flex: 1;
+  width: 100%;
+  background: linear-gradient(165deg, rgba(26, 22, 18, 0.9), rgba(18, 16, 13, 0.96));
+  border: 1px solid rgba(255, 92, 157, 0.14);
+  border-radius: 18px;
+  padding: 1.5rem 1.25rem 1.25rem;
+  text-align: center;
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.25s ease, box-shadow 0.25s ease;
+}
+.step-node:hover {
+  transform: translateY(-4px);
+  border-color: rgba(255, 92, 157, 0.4);
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.35), 0 0 30px rgba(255, 61, 110, 0.12);
+}
+
+.step-node-icon {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  background: linear-gradient(135deg, #ff6fae 0%, #ff3d6e 45%, #e32b45 100%);
+  box-shadow: 0 8px 24px rgba(255, 61, 110, 0.4);
+}
+.step-node-icon svg {
+  width: 28px;
+  height: 28px;
+}
+
+.step-node-index {
+  position: absolute;
+  top: 1rem;
+  right: 1.1rem;
+  font-size: 2.25rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  color: rgba(255, 92, 157, 0.16);
+}
+
+.step-node-label {
+  margin-top: 1rem;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #ff5c9d;
+}
+
+.step-node-title {
+  margin-top: 0.4rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #fff8f2;
+}
+
+.step-node-desc {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  color: #c4b5a8;
+  line-height: 1.55;
+}
+
+.step-connector {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 92, 157, 0.5);
+  flex-shrink: 0;
+  transform: rotate(90deg);
+  padding: 0.15rem 0;
+}
+.step-connector svg {
+  width: 26px;
+  height: 26px;
+}
+
+@media (min-width: 768px) {
+  .step-connector {
+    transform: none;
+    padding: 0 0.4rem;
+  }
+}
+
 .landing-h1 {
   font-size: clamp(2rem, 5vw, 3.5rem);
   font-weight: 800;

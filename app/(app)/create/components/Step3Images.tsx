@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { authFetch } from "@/lib/authFetch";
 import { getActiveScenes } from "@/lib/adScenes";
 import {
   downloadAllWithDelay,
@@ -68,7 +69,7 @@ export default function Step3Images({
 
     console.log("[STEP3] Analyse du produit (GPT-4o Vision)...");
     try {
-      const res = await fetch("/api/analyze-product", {
+      const res = await authFetch("/api/analyze-product", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -110,7 +111,7 @@ export default function Step3Images({
         `[STEP3] 1 seul appel API — scène ${sceneIndex + 1}/${scenes.length}`
       );
       console.log("[STEP3] Template envoyé:", product.template);
-      const res = await fetch("/api/images", {
+      const res = await authFetch("/api/images", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -129,8 +130,10 @@ export default function Step3Images({
               ? product.influencerImage || null
               : null,
           influencerMode: product.influencerMode || "ai",
+          influencerBackgroundMode: product.influencerBackgroundMode || "change",
           template: product.template,
           targetAudience: product.targetAudience,
+          productType: product.productType || "product",
           regenerate: Boolean(images[id]),
         }),
       });
