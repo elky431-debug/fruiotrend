@@ -2,18 +2,18 @@ const FEATURES = [
   {
     icon: "✍️",
     title: "Script viral en 1 clic",
-    desc: "GPT-4o écrit un hook qui scrolle-stop et un script de vente en français, calibré pour ta cible.",
+    desc: "L'IA PubMoi écrit un hook qui stoppe le scroll et un script de vente en français, calibré pour ta cible.",
     span: true,
   },
   {
     icon: "🎯",
     title: "Visuels fidèles à ton produit",
-    desc: "Gemini garde la forme, les couleurs et le packaging exacts de ta photo.",
+    desc: "PubMoi garde la forme, les couleurs et le packaging exacts de ta photo produit.",
   },
   {
     icon: "🎙️",
     title: "Voix intégrée",
-    desc: "LTX 2.3 anime et parle — voix synchronisée, zéro montage.",
+    desc: "Animation et voix synchronisée par PubMoi — zéro montage de ton côté.",
   },
   {
     icon: "📱",

@@ -27,7 +27,7 @@ const STEPS = [
   {
     step: "ÉTAPE 2",
     title: "Script & visuels IA",
-    desc: "GPT-4o rédige le script pub FR. Gemini génère le personnage cartoon et les scènes 9:16 avec ton produit.",
+    desc: "L'IA PubMoi rédige ton script en français et génère le personnage cartoon ainsi que les scènes 9:16 fidèles à ton produit.",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <path
@@ -53,8 +53,8 @@ const STEPS = [
   },
   {
     step: "ÉTAPE 3",
-    title: "Vidéo LTX + voix intégrée",
-    desc: "LTX 2.3 Fast anime chaque scène avec audio synchronisé. Assemble et publie sur TikTok / Meta.",
+    title: "Vidéo + voix intégrée",
+    desc: "PubMoi anime chaque scène avec une voix synchronisée, assemble le tout et te livre une pub prête pour TikTok / Meta.",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <rect

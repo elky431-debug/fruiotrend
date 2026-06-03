@@ -19,7 +19,7 @@ const TESTIMONIALS = [
   {
     handle: "@hamuyama_lab",
     quote:
-      "Hook + voix intégrée LTX en une passe — exactement le format TikTok Ads que je cherchais.",
+      "Hook + voix intégrée PubMoi en une passe — exactement le format TikTok Ads que je cherchais.",
     ...LANDING_PREVIEW_IMAGES.influenceur,
     stats: "201K likes",
   },

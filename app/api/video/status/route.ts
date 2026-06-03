@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
 
     if (!process.env.FAL_API_KEY) {
       return NextResponse.json(
-        { error: "FAL_API_KEY manquante" },
+        { error: "Service vidéo PubMoi indisponible. Réessaie plus tard." },
         { status: 500 }
       );
     }

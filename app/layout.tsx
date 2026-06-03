@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 
@@ -9,10 +9,18 @@ const jakarta = Plus_Jakarta_Sans({
   display: "swap",
 });
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  // Zoom utilisateur conservé pour l'accessibilité ; le zoom auto iOS au focus
+  // est évité côté CSS (inputs à 16px sur mobile).
+  viewportFit: "cover",
+};
+
 export const metadata: Metadata = {
   title: "PubMoi — Pubs dropshipping IA",
   description:
-    "Crée des publicités 9:16 pour TikTok et Meta : script GPT, visuels Gemini, vidéo LTX.",
+    "Crée des publicités 9:16 pour TikTok et Meta avec l'IA PubMoi : script, visuels et vidéo en quelques minutes.",
   icons: {
     icon: [
       { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },

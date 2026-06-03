@@ -14,9 +14,9 @@ type ProductMode = "product" | "app";
 
 const TABS = [
   { num: 1 as const, label: "Produit", api: "" },
-  { num: 2 as const, label: "Script", api: "GPT-4o" },
-  { num: 3 as const, label: "Visuels", api: "Gemini" },
-  { num: 4 as const, label: "Vidéo", api: "LTX (vidéo + voix)" },
+  { num: 2 as const, label: "Script", api: "IA PubMoi" },
+  { num: 3 as const, label: "Visuels", api: "IA PubMoi" },
+  { num: 4 as const, label: "Vidéo", api: "PubMoi Video" },
 ];
 
 export default function CreatorLayout() {

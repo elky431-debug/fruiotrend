@@ -337,7 +337,7 @@ export async function POST(req: NextRequest) {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
       return NextResponse.json(
-        { error: "OPENAI_API_KEY manquante" },
+        { error: "Service script PubMoi indisponible. Réessaie plus tard." },
         { status: 500 }
       );
     }

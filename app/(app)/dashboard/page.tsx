@@ -61,7 +61,10 @@ export default function DashboardPage() {
   };
 
   return (
-    <div style={{ maxWidth: 1000, margin: "0 auto", padding: "48px 24px" }}>
+    <div
+      className="dashboard-page"
+      style={{ maxWidth: 1000, margin: "0 auto", padding: "48px 24px" }}
+    >
       <div
         style={{
           display: "flex",
@@ -151,7 +154,7 @@ export default function DashboardPage() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fill,minmax(300px,1fr))",
+            gridTemplateColumns: "repeat(auto-fill,minmax(min(100%, 280px),1fr))",
             gap: 16,
           }}
         >

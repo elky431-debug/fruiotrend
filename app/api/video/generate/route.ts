@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
 
     if (!apiKey) {
       return NextResponse.json(
-        { error: "FAL_API_KEY manquante" },
+        { error: "Service vidéo PubMoi indisponible. Réessaie plus tard." },
         { status: 500 }
       );
     }
@@ -96,7 +96,7 @@ export async function POST(req: NextRequest) {
         {
           error:
             billingErr ||
-            `fal.ai erreur (${falRes.status}): ${falText.slice(0, 300)}`,
+            "Erreur lors de la génération vidéo PubMoi. Réessaie dans quelques instants.",
         },
         { status: billingErr ? 402 : 500 }
       );
@@ -107,7 +107,7 @@ export async function POST(req: NextRequest) {
       falData = JSON.parse(falText);
     } catch {
       return NextResponse.json(
-        { error: "Réponse fal.ai invalide" },
+        { error: "Erreur lors de la génération vidéo PubMoi. Réessaie." },
         { status: 500 }
       );
     }
@@ -131,7 +131,7 @@ export async function POST(req: NextRequest) {
       videoUrl,
       durationMs: totalMs,
       embeddedAudio: false,
-      provider: "ltx-2.3-fast",
+      provider: "pubmoi-video",
     });
   } catch (error) {
     console.error("[VIDEO/GENERATE]", error);

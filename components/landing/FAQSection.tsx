@@ -8,8 +8,8 @@ const FAQ_ITEMS = [
     a: "Un outil pour créer des publicités dropshipping en format vertical 9:16 : script IA, visuels cartoon avec ton produit, puis vidéos animées prêtes pour TikTok et Meta.",
   },
   {
-    q: "Quelles IA sont utilisées ?",
-    a: "GPT-4o pour le script, Gemini pour les images, LTX 2.3 Fast (fal.ai) pour la vidéo et la voix intégrée, le tout assemblé en MP4.",
+    q: "Comment fonctionne l'IA PubMoi ?",
+    a: "PubMoi orchestre tout pour toi : rédaction du script, visuels 3D fidèles à ton produit, animation vidéo 9:16 avec voix synchronisée, export MP4 prêt à publier. Tu n'as rien à configurer.",
   },
   {
     q: "Ai-je besoin de compétences en montage ?",

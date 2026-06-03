@@ -109,7 +109,7 @@ export async function generateElevenLabsSpeech(
 }> {
   const apiKey = process.env.FAL_API_KEY;
   if (!apiKey) {
-    throw new Error("FAL_API_KEY manquante dans .env.local");
+    throw new Error("Voix PubMoi temporairement indisponible.");
   }
 
   const finalVoice = normalizeElevenVoiceId(voiceId);
@@ -149,7 +149,7 @@ export async function generateElevenLabsSpeech(
     if (billingMsg) {
       throw new Error(billingMsg);
     }
-    throw new Error(`ElevenLabs erreur (${response.status}): ${err.slice(0, 400)}`);
+    throw new Error("Erreur lors de la génération de la voix PubMoi. Réessaie.");
   }
 
   const data = (await response.json()) as {
@@ -160,7 +160,7 @@ export async function generateElevenLabsSpeech(
 
   const audioUrl = data.audio?.url || data.url || data.audio_url;
   if (!audioUrl) {
-    throw new Error("Pas d'URL audio retournée par fal.ai");
+    throw new Error("La voix PubMoi n'a pas pu être générée. Réessaie.");
   }
 
   const audioRes = await fetch(audioUrl);

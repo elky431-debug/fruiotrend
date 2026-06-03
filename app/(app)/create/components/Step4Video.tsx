@@ -330,7 +330,7 @@ export default function Step4Video({
       }
 
       setProgressLabel(
-        `Scène ${sc.number}/${total} — LTX (vidéo muette) + voix...`
+        `Scène ${sc.number}/${total} — animation PubMoi + voix...`
       );
 
       try {
@@ -347,7 +347,7 @@ export default function Step4Video({
           {
             onStart: () => {
               setProgressLabel(
-                `Scène ${sc.number}/${total} — LTX 2.3 Fast + audio...`
+                `Scène ${sc.number}/${total} — vidéo PubMoi + voix...`
               );
             },
             onPoll: (videoPct) => {
@@ -482,7 +482,7 @@ export default function Step4Video({
 
     if (Object.keys(sceneVideos).length === 0) {
       setError(
-        "Aucune vidéo générée — vérifie FAL_API_KEY dans .env.local et la console (F12)"
+        "Aucune vidéo générée. Réessaie dans quelques instants ou contacte le support PubMoi."
       );
       setStep("error");
       return;
@@ -598,7 +598,7 @@ export default function Step4Video({
           Générer la vidéo finale
         </h2>
         <p style={{ fontSize: 13, color: "var(--text2)", marginBottom: 8 }}>
-          LTX 2.3 Fast + voix IA (sans musique de fond) — {scenes.length === 1 ? "ton image" : `les ${scenes.length} scènes`}{" "}
+          PubMoi Video + voix IA (sans musique de fond) — {scenes.length === 1 ? "ton image" : `les ${scenes.length} scènes`}{" "}
           (~1–2 min par scène). Aperçu vocal ci-dessous.
         </p>
         {!hasAllImages && (
@@ -753,7 +753,7 @@ export default function Step4Video({
                 {VOICE_OPTIONS.find((v) => v.id === selectedVoice)?.name ||
                   selectedVoice}
                 {isAppAd
-                  ? " · Pixar : voix mixée (sans lip sync fal)"
+                  ? " · Style Pixar : voix mixée sur la vidéo"
                   : ""}
               </p>
               <div

@@ -1367,3 +1367,72 @@ select:focus {
   .stepper-node-api { display: none; }
   .stepper-line { width: 12px; }
 }
+
+/* ============================================================
+   MOBILE — responsive global (préserve le design desktop)
+   ============================================================ */
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Évite le débordement horizontal sur petits écrans */
+body {
+  overflow-x: hidden;
+}
+
+/* Évite le double-tap zoom iOS sans changer la taille des éléments */
+button,
+[role="button"],
+a {
+  touch-action: manipulation;
+}
+
+/* Zone protégée (encoche / barre d'accueil iPhone) */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Helpers d'affichage header desktop/mobile */
+@media (max-width: 768px) {
+  .desktop-only {
+    display: none !important;
+  }
+}
+@media (min-width: 769px) {
+  .mobile-only {
+    display: none !important;
+  }
+}
+
+@media (max-width: 768px) {
+  /* iOS : un input < 16px déclenche un zoom auto au focus → on force 16px
+     uniquement sur mobile pour ne pas altérer le rendu desktop. */
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+
+  /* Paddings resserrés sur mobile */
+  .app-page {
+    padding: 24px 16px 72px;
+  }
+  .studio-page {
+    padding: 24px 14px 90px;
+  }
+  .dashboard-page {
+    padding: 28px 16px 64px !important;
+  }
+
+  /* Logo header un peu plus compact pour laisser la place au menu */
+  .app-shell .pubmoi-logo-img {
+    --logo-w: 116px !important;
+    min-width: 116px;
+  }
+
+  /* Titres compacts */
+  .studio-hero h1 {
+    font-size: 28px;
+  }
+}

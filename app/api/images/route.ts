@@ -100,7 +100,7 @@ export async function POST(req: NextRequest) {
 
     if (!process.env.GEMINI_API_KEY) {
       return NextResponse.json(
-        { error: "GEMINI_API_KEY manquante" },
+        { error: "Service visuels PubMoi indisponible. Réessaie plus tard." },
         { status: 500 }
       );
     }
@@ -248,7 +248,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       {
         error:
-          "Aucun modèle Gemini image disponible. Vérifie GEMINI_API_KEY et réessaie. " +
+          "Génération visuelle PubMoi indisponible pour le moment. Réessaie. " +
           errors.join(" | "),
       },
       { status: 500 }
@@ -256,10 +256,15 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error(
       "[IMAGES] Erreur:",
-      error instanceof Error ? error.message : "Erreur Gemini"
+      error instanceof Error ? error.message : "Erreur génération visuelle PubMoi"
     );
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Erreur Gemini" },
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Erreur lors de la génération des visuels PubMoi",
+      },
       { status: 500 }
     );
   }

@@ -27,7 +27,7 @@ function voiceDescription(v: XaiVoice): string {
   if (v.language) {
     parts.push(v.language === "multilingual" ? "Multilingue" : v.language);
   }
-  return parts.join(" · ") || "Voix Grok";
+  return parts.join(" · ") || "Voix PubMoi";
 }
 
 function toVoiceOption(v: XaiVoice): VoiceOption {

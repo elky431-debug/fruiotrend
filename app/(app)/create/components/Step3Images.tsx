@@ -256,8 +256,8 @@ export default function Step3Images({
     analyzing: "🔍 Analyse du produit...",
     scenes:
       scenes.length === 1
-        ? "⏳ Gemini génère l'image..."
-        : "⏳ Gemini génère les scènes...",
+        ? "⏳ PubMoi génère l'image..."
+        : "⏳ PubMoi génère les scènes...",
     done: "✓ Visuels prêts",
   };
 

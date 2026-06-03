@@ -113,12 +113,12 @@ export default function VoiceSelector({
           marginBottom: 4,
         }}
       >
-        🎙️ Voix Grok TTS
+        🎙️ Voix PubMoi
       </h3>
       <p style={{ color: "var(--text2)", fontSize: 12, marginBottom: 12 }}>
         {voicesLoading
           ? "Chargement…"
-          : `${voices.length} voix — clique ▶ pour écouter un aperçu (GROK ou FAL_API_KEY)`}
+          : `${voices.length} voix — clique ▶ pour écouter un aperçu`}
       </p>
 
       <input

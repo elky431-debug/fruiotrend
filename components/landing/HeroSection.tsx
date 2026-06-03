@@ -21,16 +21,17 @@ export function HeroSection() {
           <span className="badge badge-accent">📢 Pub dropshipping IA</span>
 
           <h1 className="landing-h1" style={{ marginTop: "1.5rem" }}>
-            Crée des pubs
+            La pub qui
             <br />
-            <span className="text-gradient">PubMoi</span>
+            <span className="text-gradient">stoppe le scroll</span>
             <br />
             en 5 minutes
           </h1>
 
           <p className="landing-lead">
-            Upload ton produit, script GPT-4o, visuels Gemini fidèles à ta photo,
-            vidéo LTX 2.3 avec voix intégrée — format 9:16 prêt pour TikTok et Meta.
+            Une photo de ton produit, et l&apos;IA s&apos;occupe du reste : script,
+            visuels 3D et vidéo 9:16 avec voix. Tu publies sur TikTok et Meta —
+            sans caméra, sans freelance.
           </p>
 
           <Link

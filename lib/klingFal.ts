@@ -18,7 +18,7 @@ export function parseFalApiError(
     return {
       kind: "account_locked",
       message:
-        "Compte fal.ai verrouillé. Régénère une clé API ou contacte support@fal.ai.",
+        "Service vidéo PubMoi temporairement indisponible. Réessaie plus tard ou contacte le support.",
     };
   }
 
@@ -30,7 +30,7 @@ export function parseFalApiError(
     return {
       kind: "no_credits",
       message:
-        "Solde fal.ai insuffisant. Recharge sur https://fal.ai/dashboard/billing.",
+        "Capacité de génération vidéo temporairement saturée. Réessaie dans quelques minutes.",
     };
   }
 

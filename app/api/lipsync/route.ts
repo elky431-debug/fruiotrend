@@ -171,7 +171,7 @@ export async function POST(req: NextRequest) {
     if (!apiKey) {
       return NextResponse.json(
         {
-          error: "FAL_API_KEY manquante",
+          error: "Service vidéo PubMoi indisponible. Réessaie plus tard.",
           videoUrl: fallbackVideoUrl,
           lipsyncApplied: false,
         },

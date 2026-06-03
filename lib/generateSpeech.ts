@@ -94,11 +94,11 @@ export async function generateSpeechWithFallback(
   if (!process.env.FAL_API_KEY) {
     if (process.env.GROK_API_KEY) {
       throw new Error(
-        "Grok TTS non autorisé sur ton compte xAI. Ajoute des crédits fal.ai (FAL_API_KEY) pour la voix de secours, ou active l'API audio sur console.x.ai."
+        "La voix PubMoi est temporairement indisponible. Réessaie dans quelques instants."
       );
     }
     throw new Error(
-      "Configure GROK_API_KEY ou FAL_API_KEY dans .env.local pour générer la voix."
+      "La voix PubMoi est temporairement indisponible. Réessaie dans quelques instants."
     );
   }
 

@@ -55,7 +55,7 @@ export async function generateGrokSpeech(
 }> {
   const apiKey = process.env.GROK_API_KEY;
   if (!apiKey) {
-    throw new Error("GROK_API_KEY manquante");
+    throw new Error("Voix PubMoi temporairement indisponible.");
   }
 
   const voice = normalizeGrokVoiceId(voiceId);
@@ -81,12 +81,12 @@ export async function generateGrokSpeech(
 
   if (!response.ok) {
     const err = await response.text();
-    throw new Error(`Grok TTS erreur (${response.status}): ${err.slice(0, 400)}`);
+    throw new Error("Erreur lors de la génération de la voix PubMoi. Réessaie.");
   }
 
   const audioBuffer = await response.arrayBuffer();
   if (audioBuffer.byteLength === 0) {
-    throw new Error("Grok TTS: réponse audio vide");
+    throw new Error("La voix PubMoi n'a pas pu être générée. Réessaie.");
   }
 
   console.log(

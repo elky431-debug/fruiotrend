@@ -7,7 +7,7 @@ export async function GET() {
   return NextResponse.json({
     voices: VOICE_OPTIONS,
     count: VOICE_OPTIONS.length,
-    provider: "grok-tts-aurora",
-    note: "Voix Grok xAI — aperçu via /api/voice-preview. LTX utilise le style vocal dans le prompt vidéo.",
+    provider: "pubmoi-voice",
+    note: "Voix PubMoi — aperçu via /api/voice-preview.",
   });
 }

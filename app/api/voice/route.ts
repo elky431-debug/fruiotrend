@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           error:
-            "Configure GROK_API_KEY ou FAL_API_KEY dans .env.local pour la voix.",
+            "La voix PubMoi est temporairement indisponible. Réessaie plus tard.",
         },
         { status: 500 }
       );
