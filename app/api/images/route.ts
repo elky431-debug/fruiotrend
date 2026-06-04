@@ -5,7 +5,11 @@ import {
   buildImageTemplatePromptBlock,
   normalizeImageTemplateKey,
 } from "@/lib/adTemplates";
-import { resolveSceneBackground } from "@/lib/inferBackground";
+import {
+  buildProductContextForBackground,
+  resolveSceneBackground,
+  sanitizeSceneDescription,
+} from "@/lib/inferBackground";
 import { requireCredits } from "@/lib/apiCredits";
 import { analyzeProductImages } from "@/lib/productAnalysis";
 
@@ -487,12 +491,19 @@ function buildImagePrompt(
   influencerInstruction?: string,
   keepInfluencerBackground = false
 ): string {
-  const sceneDesc = scene.visual_description || scene.description || "";
   const analysis =
     productAnalysis?.trim() || productDescription?.trim() || "See reference photos";
+  const productContext = buildProductContextForBackground({
+    description: productDescription,
+    analysis,
+  });
   const background = keepInfluencerBackground
     ? "Keep the EXACT same background / setting as the reference influencer photo (same room, decor, lighting), re-rendered in Pixar 3D CGI style. Do NOT invent a new environment."
-    : resolveSceneBackground(scene.background, productDescription);
+    : resolveSceneBackground(scene.background, productContext);
+  const sceneDesc = sanitizeSceneDescription(
+    scene.visual_description || scene.description || "",
+    background
+  );
   const narrativeRole = scene.narrative_role || "solution";
   const backgroundBlock = buildBackgroundMandatoryBlock(background);
 

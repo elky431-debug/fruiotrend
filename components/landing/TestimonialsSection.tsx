@@ -20,12 +20,12 @@ const TESTIMONIALS: TestimonialItem[] = [
     stats: "Premiers clients en 48h",
   },
   {
-    handle: "@dr.skelix",
+    handle: "@pistolero",
     quote:
-      "Le produit reste fidèle sur chaque scène. Le style cartoon convertit mieux que mes anciennes pubs.",
-    media: "image",
-    ...LANDING_PREVIEW_IMAGES.influenceur,
-    stats: "48K vues en 24h",
+      "Une pub PubMoi et notre CA a doublé. Le format TikTok convertit enfin sans équipe créa.",
+    media: "video",
+    videoSrc: "/landing/testimonial-pistolero.mp4",
+    stats: "CA ×2",
   },
   {
     handle: "@hamuyama_lab",

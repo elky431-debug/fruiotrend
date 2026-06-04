@@ -10,7 +10,10 @@ import {
   TEMPLATE_SYSTEM_PROMPTS,
   usesHumanPresenter,
 } from "@/lib/adTemplates";
-import { resolveSceneBackground } from "@/lib/inferBackground";
+import {
+  buildProductContextForBackground,
+  resolveSceneBackground,
+} from "@/lib/inferBackground";
 import type { AdCharacter, AdTemplate, ProductInput } from "@/types/ad";
 
 function buildVisceralHookSection(
@@ -648,7 +651,11 @@ Réponds en anglais pour les prompts image. Sois très spécifique sur les coule
     script.scenes = script.scenes.map((scene, i) => {
       const background = resolveSceneBackground(
         scene.background,
-        `${product.name} ${product.description}`
+        buildProductContextForBackground({
+          name: product.name,
+          description: product.description,
+          analysis: productVisualDescription,
+        })
       );
 
       let visualDescription = scene.visual_description?.trim() || "";
