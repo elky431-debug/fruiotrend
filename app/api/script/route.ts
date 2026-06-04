@@ -10,7 +10,7 @@ import {
   TEMPLATE_SYSTEM_PROMPTS,
   usesHumanPresenter,
 } from "@/lib/adTemplates";
-import { inferBackground } from "@/lib/inferBackground";
+import { resolveSceneBackground } from "@/lib/inferBackground";
 import type { AdCharacter, AdTemplate, ProductInput } from "@/types/ad";
 
 function buildVisceralHookSection(
@@ -96,6 +96,52 @@ VALIDATION OBLIGATOIRE DU HOOK :
 □ Est-ce que ça fait ressentir quelque chose émotionnellement ?
 □ Est-ce que le produit est mentionné comme LA solution parfaite à CE problème précis ?
 Si une case n'est pas cochée → RECOMMENCE le hook.`;
+}
+
+function buildBackgroundRuleSection(): string {
+  return `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+RÈGLE BACKGROUND — OBLIGATOIRE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Le champ "background" de CHAQUE scène DOIT correspondre à l'environnement
+naturel d'utilisation du produit. Jamais un salon, jamais un fond neutre.
+
+EXEMPLES :
+- Pistolet massage / récupération sportive →
+  "Professional gym interior, rubber floor, blue LED strip lights on walls,
+   weights and dumbbells in soft bokeh background, dramatic athletic lighting"
+
+- Crème visage / beauté →
+  "Elegant marble bathroom, warm vanity mirror lights, pink roses,
+   white candles, luxury spa atmosphere, soft bokeh"
+
+- Gadget tech / gaming →
+  "Dark gaming desk setup, RGB lights purple and blue, multiple screens
+   in background, premium minimal workspace"
+
+- Vêtement sport / fitness →
+  "Outdoor running track at golden hour, blurred stadium lights,
+   athletic track surface, warm sunset light"
+
+- Produit cuisine / alimentation →
+  "Modern open kitchen, marble countertop, fresh herbs,
+   warm natural light from window, clean and bright"
+
+- Jouet / enfant →
+  "Colorful children's bedroom, soft pastel colors, plush toys,
+   warm natural lighting, happy playful atmosphere"
+
+- Accessoire mode / luxe →
+  "Luxury boutique interior, soft spotlight, white marble floor,
+   gold accents, elegant minimalist decor"
+
+- Santé / bien-être / sommeil →
+  "Cozy bedroom at night, warm lamp light, white pillows,
+   calm and peaceful atmosphere, soft bokeh"
+
+RÈGLE : Le background doit être écrit EN ANGLAIS et être SI PRÉCIS
+qu'un générateur d'image comprend exactement où placer le personnage.
+Minimum 15 mots de description de décor.
+INTERDIT : living room, salon, white background, neutral studio, plain backdrop.`;
 }
 
 function buildCourtxSystemPrompt(opts: {
@@ -229,6 +275,9 @@ GADGET/TECH :
 "Si ta batterie lâche à 15% au pire moment, je te garde connecté toute la journée. Prends-moi."
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${buildBackgroundRuleSection()}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 VISUEL — TEMPLATE ${templateLabel.toUpperCase()}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ${templateStyleBlock}
@@ -260,7 +309,7 @@ FORMAT JSON STRICT
       "number": 1,
       "title": "Titre de la scène",
       "narrative_role": "hook|problem|solution|cta",
-      "background": "Décor EN ANGLAIS contextuel au produit",
+      "background": "Décor EN ANGLAIS — environnement réel d'utilisation du produit (min 15 mots, jamais salon/fond neutre)",
       "visual_description": "Description scène EN ANGLAIS pour Gemini",
       "character_action": "Action EN ANGLAIS",
       "voiceover": "${minWords}-${maxWords} mots EN FRANÇAIS — style Courtx, remplit ${secondsPerScene}s",
@@ -597,9 +646,10 @@ Réponds en anglais pour les prompts image. Sois très spécifique sur les coule
       script.character || buildDefaultCharacter(product, template, humanPresenter);
 
     script.scenes = script.scenes.map((scene, i) => {
-      const background =
-        scene.background?.trim() ||
-        inferBackground(`${product.name} ${product.description}`);
+      const background = resolveSceneBackground(
+        scene.background,
+        `${product.name} ${product.description}`
+      );
 
       let visualDescription = scene.visual_description?.trim() || "";
       if (
@@ -784,7 +834,10 @@ async function buildAppScriptResponse(
   const scriptMode = product.scriptMode || "probleme-solution";
 
   const { visual, video } = buildAppSceneVisuals(appName);
-  const background = `Modern lifestyle environment matching ${appName} app use case`;
+  const background = resolveSceneBackground(
+    undefined,
+    `${appName} ${product.description}`
+  );
 
   const finalizeScene = (
     voiceover: string,

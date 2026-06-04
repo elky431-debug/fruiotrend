@@ -5,7 +5,7 @@ import {
   buildImageTemplatePromptBlock,
   normalizeImageTemplateKey,
 } from "@/lib/adTemplates";
-import { inferBackground } from "@/lib/inferBackground";
+import { resolveSceneBackground } from "@/lib/inferBackground";
 import { requireCredits } from "@/lib/apiCredits";
 import { analyzeProductImages } from "@/lib/productAnalysis";
 
@@ -464,6 +464,19 @@ If not → START OVER.
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!`;
 }
 
+function buildBackgroundMandatoryBlock(background: string): string {
+  return `
+━━━ BACKGROUND — MANDATORY ━━━
+The background MUST be: ${background}
+
+This specific environment is NON-NEGOTIABLE.
+Do NOT use a living room, salon, or neutral/plain background.
+Do NOT use a white or grey studio background.
+The character/product must be placed IN this exact environment.
+The background must be visible and contextually relevant to the product.
+Minimum 15 words of environmental detail must be readable in the scene.`;
+}
+
 function buildImagePrompt(
   scene: SceneInput,
   productDescription: string,
@@ -479,8 +492,9 @@ function buildImagePrompt(
     productAnalysis?.trim() || productDescription?.trim() || "See reference photos";
   const background = keepInfluencerBackground
     ? "Keep the EXACT same background / setting as the reference influencer photo (same room, decor, lighting), re-rendered in Pixar 3D CGI style. Do NOT invent a new environment."
-    : scene.background?.trim() || inferBackground(productDescription);
+    : resolveSceneBackground(scene.background, productDescription);
   const narrativeRole = scene.narrative_role || "solution";
+  const backgroundBlock = buildBackgroundMandatoryBlock(background);
 
   const packagingInstruction = hasPackaging
     ? `
@@ -530,6 +544,7 @@ The packaging image is provided in the reference above — reproduce it EXACTLY:
   return `${shapeBlock}
 
 Create a Pixar/DreamWorks 3D CGI advertisement image.
+${backgroundBlock}
 
 ━━━ PRODUCT REFERENCE ━━━
 Reference photos are provided above. The product is:
@@ -554,18 +569,14 @@ ${packagingInstruction}
 - Pixar "Toy Story 4" quality 3D CGI — NOT photorealistic, NOT dark cinematic
 - Subsurface scattering on all surfaces
 - Colors: VIBRANT and OVERSATURATED — 40% more vivid than reality
-- Lighting: ${mood}
+- Lighting: ${mood} — must match the mandatory background environment
 - Smooth 3D surfaces with Pixar-quality textures
 - Depth of field bokeh on background elements
 - NOT flat, NOT cartoon 2D, NOT dark
 
-━━━ BACKGROUND ━━━
-${background}
-- Rich contextual environment — NEVER white or plain
-- ${mood}
-
 ━━━ SCENE ━━━
 ${sceneDesc}
+Setting: ${background}
 
 ━━━ FORMAT ━━━
 ${formatHint}
@@ -584,11 +595,13 @@ function buildAppImagePrompt(
   const sceneDesc = scene.visual_description || scene.description || "";
   const background = keepInfluencerBackground
     ? "Keep the EXACT same background / setting as the reference influencer photo (same room, decor, lighting), re-rendered in Pixar 3D CGI style. Do NOT invent a new environment."
-    : scene.background?.trim() || inferBackground(appDescription);
+    : resolveSceneBackground(scene.background, appDescription);
+  const backgroundBlock = buildBackgroundMandatoryBlock(background);
   const mouthExpr = scene.mouth_expression || mouthHintForEmotion(scene.emotion);
   const hasInfluencerPhoto = Boolean(influencerInstruction);
 
   return `Create a Pixar/DreamWorks 3D CGI advertisement image.
+${backgroundBlock}
 
 MANDATORY STYLE: the image MUST be a fully 3D ANIMATED Pixar/DreamWorks CGI
 render (Toy Story / Luca look) — NEVER a photograph, NEVER photorealistic.
@@ -609,6 +622,7 @@ ${influencerInstruction}
 
 ━━━ SCENE ━━━
 ${sceneDesc}
+Setting: ${background}
 
 ━━━ CHARACTER ━━━
 ${
@@ -631,10 +645,6 @@ ${
 - Pixar "Toy Story 4" quality 3D CGI — NOT photorealistic, NOT flat 2D
 - Subsurface scattering, vibrant oversaturated colors, rim lighting
 - Depth of field bokeh on background elements
-
-━━━ BACKGROUND ━━━
-${background}
-- Rich contextual environment matching the app use case — NEVER white or plain
 
 ━━━ FORMAT ━━━
 Vertical 9:16 — character and smartphone clearly framed, cinematic lighting.`;

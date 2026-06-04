@@ -1,56 +1,55 @@
 /** Décor contextuel par défaut si GPT n'a pas fourni scene.background */
 export function inferBackground(productDescription: string): string {
-  const desc = productDescription.toLowerCase();
+  const desc = (productDescription || "").toLowerCase();
 
-  if (
-    desc.includes("massage") ||
-    desc.includes("muscle") ||
-    desc.includes("sport") ||
-    desc.includes("fitness") ||
-    desc.includes("gym")
-  ) {
-    return "Professional gym interior, rubber floor with gym markings, blue LED strip lights along walls, weights and equipment in soft bokeh background, dramatic side lighting creating depth";
+  if (desc.match(/massage|muscle|sport|récupér|fitness|gym|entraîn|padel|tennis|course/)) {
+    return "Professional gym interior, rubber flooring, blue LED strip lights along walls, weights and dumbbells in soft bokeh background, dramatic athletic side lighting, energetic atmosphere";
   }
-  if (
-    desc.includes("crème") ||
-    desc.includes("soin") ||
-    desc.includes("peau") ||
-    desc.includes("visage") ||
-    desc.includes("beauté") ||
-    desc.includes("beauty")
-  ) {
-    return "Elegant bathroom with marble surfaces, warm vanity mirror with soft glowing lights, pink roses in a vase, white candles, luxury spa atmosphere";
+  if (desc.match(/crème|soin|peau|visage|beauté|collagène|anti-âge|ride|beauty|skincare/)) {
+    return "Elegant marble bathroom vanity, warm glowing mirror lights, fresh pink roses in vase, white scented candles, luxury spa atmosphere, soft flattering light";
   }
-  if (
-    desc.includes("tech") ||
-    desc.includes("gadget") ||
-    desc.includes("électronique") ||
-    desc.includes("gaming") ||
-    desc.includes("electronic")
-  ) {
-    return "Modern dark desk setup with RGB lighting, multiple screens in background, clean minimal workspace, purple and blue accent lights";
+  if (desc.match(/tech|gadget|électronique|gaming|jeu|ordinateur|phone|tel|app|appli|software/)) {
+    return "Modern dark desk setup with RGB purple and blue lighting, ultra-wide monitor in background, clean minimal workspace, tech premium atmosphere";
   }
-  if (
-    desc.includes("cuisine") ||
-    desc.includes("food") ||
-    desc.includes("cook") ||
-    desc.includes("kitchen") ||
-    desc.includes("aliment")
-  ) {
-    return "Modern open kitchen with marble countertop, fresh herbs, warm golden lighting, clean and inviting atmosphere";
+  if (desc.match(/cuisine|food|alimenta|nutri|manger|cuire|repas|kitchen|cook/)) {
+    return "Bright modern kitchen, white marble countertop, fresh colorful vegetables, warm natural light from large window, clean and appetizing atmosphere";
   }
-  if (
-    desc.includes("mode") ||
-    desc.includes("vêtement") ||
-    desc.includes("sac") ||
-    desc.includes("bijou") ||
-    desc.includes("fashion")
-  ) {
-    return "Luxury boutique interior, soft spotlight, clean white marble floor, elegant minimalist decor, warm golden accents";
+  if (desc.match(/mode|vêtement|sac|bijou|accessoire|luxe|parfum|fashion|jewelry/)) {
+    return "Luxury fashion boutique interior, soft spotlight from above, clean white marble floor, gold rack displays in background, elegant and aspirational";
   }
-  if (desc.includes("enfant") || desc.includes("jouet") || desc.includes("toy")) {
-    return "Colorful children's bedroom with soft warm light, plush cushions, playful toys scattered in soft bokeh, cozy and joyful atmosphere";
+  if (desc.match(/sommeil|dormir|nuit|repos|relaxa|stress|anxié|sleep|wellness|bien-être/)) {
+    return "Cozy bedroom at night, warm bedside lamp creating soft glow, white fluffy pillows and duvet, peaceful and calming atmosphere, bokeh fairy lights";
+  }
+  if (desc.match(/bébé|enfant|jouet|kid|parent|toy|children/)) {
+    return "Bright colorful playroom, pastel colored walls, soft play mat, natural daylight from window, happy and safe family atmosphere";
+  }
+  if (desc.match(/jardin|plante|nature|outdoor|extérieur|garden|plant/)) {
+    return "Beautiful garden in golden hour light, green lush plants, warm sunset bokeh, natural and fresh outdoor atmosphere";
+  }
+  if (desc.match(/santé|douleur|lombaire|dos|articul|health|pain|medical/)) {
+    return "Calm wellness therapy room, soft warm lighting, clean minimalist decor, comfortable ergonomic setting, soothing professional atmosphere";
   }
 
-  return "Warm lifestyle interior, soft natural lighting from large window, clean modern decor with plants, cozy and aspirational atmosphere";
+  return "Modern bright interior space, warm natural lighting from large windows, clean minimal decor with plants, aspirational lifestyle atmosphere";
+}
+
+const GENERIC_BACKGROUND =
+  /living room|salon|fond blanc|fond neutre|white background|grey background|gray background|neutral background|plain background|studio backdrop|studio background|generic interior|empty room|blank background|white studio|grey studio|gray studio|beige wall|neutral decor/i;
+
+/** True si le décor GPT est trop générique → on infère depuis le produit. */
+export function isGenericBackground(background?: string | null): boolean {
+  if (!background?.trim()) return true;
+  const bg = background.trim();
+  if (bg.length < 40) return true;
+  return GENERIC_BACKGROUND.test(bg);
+}
+
+/** Background final : scène GPT si précis, sinon inféré du produit. */
+export function resolveSceneBackground(
+  sceneBackground: string | undefined | null,
+  productDescription: string
+): string {
+  const trimmed = sceneBackground?.trim();
+  if (trimmed && !isGenericBackground(trimmed)) return trimmed;
+  return inferBackground(productDescription);
 }
