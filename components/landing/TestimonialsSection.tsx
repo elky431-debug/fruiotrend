@@ -7,7 +7,7 @@ type TestimonialItem = {
   quote: string;
   stats?: string;
 } & (
-  | { media: "video"; videoSrc: string; poster?: string }
+  | { media: "video"; videoSrc: string }
   | { media: "image"; src: string; alt: string }
 );
 
@@ -43,7 +43,6 @@ function TestimonialMedia({ item }: { item: TestimonialItem }) {
     return (
       <TestimonialVideo
         src={item.videoSrc}
-        poster={item.poster}
         label={`Vidéo ${item.handle}`}
       />
     );
@@ -55,7 +54,7 @@ function TestimonialMedia({ item }: { item: TestimonialItem }) {
       alt={item.alt}
       fill
       className="landing-media-img"
-      sizes="(max-width: 767px) 100vw, 33vw"
+      sizes="(max-width: 767px) 85vw, 280px"
       loading="lazy"
     />
   );
@@ -69,29 +68,35 @@ export function TestimonialsSection() {
           Ils cartonnent avec{" "}
           <span className="text-gradient">PubMoi</span>
         </h2>
-        <p className="landing-testimonials-hint">3 marques · résultats réels</p>
+        <p className="landing-testimonials-hint">3 marques · format TikTok 9:16</p>
         <div className="landing-testimonials-grid">
-          {TESTIMONIALS.map((t) => (
-            <article key={t.handle} className="landing-testimonial-card">
-              <div
-                className={`landing-testimonial-media${
-                  t.media === "video" ? " landing-testimonial-media--video" : ""
-                }`}
-              >
-                <TestimonialMedia item={t} />
-              </div>
-              <div className="landing-testimonial-body">
-                <div className="landing-testimonial-handle">
-                  <span className="landing-testimonial-avatar">📢</span>
-                  {t.handle}
+          {TESTIMONIALS.map((t) => {
+            const isVideo = t.media === "video";
+
+            return (
+              <article key={t.handle} className="landing-testimonial-card">
+                <div
+                  className={`landing-testimonial-media${
+                    isVideo ? " landing-testimonial-media--video" : ""
+                  }`}
+                >
+                  <TestimonialMedia item={t} />
                 </div>
-                <p className="landing-testimonial-quote">&ldquo;{t.quote}&rdquo;</p>
-                {t.stats && (
-                  <p className="landing-testimonial-stats">{t.stats}</p>
-                )}
-              </div>
-            </article>
-          ))}
+                <div className="landing-testimonial-body">
+                  <div className="landing-testimonial-handle">
+                    <span className="landing-testimonial-avatar">📢</span>
+                    {t.handle}
+                  </div>
+                  <p className="landing-testimonial-quote">
+                    &ldquo;{t.quote}&rdquo;
+                  </p>
+                  {t.stats && (
+                    <p className="landing-testimonial-stats">{t.stats}</p>
+                  )}
+                </div>
+              </article>
+            );
+          })}
         </div>
       </div>
     </section>

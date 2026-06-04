@@ -598,15 +598,25 @@
   background: #262018;
 }
 
+/* Cadre téléphone 9:16 — vidéo entière visible (pas de crop carré) */
 .landing-testimonial-media--video {
+  width: 100%;
+  max-width: 280px;
   height: auto;
   aspect-ratio: 9 / 16;
-  max-height: 320px;
+  margin: 0 auto;
+  background: #0a0806;
 }
 
-.landing-testimonial-media--video video.landing-media-img {
+.landing-testimonial-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
   object-fit: cover;
-  object-position: center top;
+  object-position: center center;
+  background: #0a0806;
 }
 
 .landing-testimonial-media::after {
@@ -966,14 +976,16 @@
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55);
 }
 
-.landing-testimonial-media .landing-media-img,
-.landing-testimonial-media video.landing-media-img {
+.landing-testimonial-media .landing-media-img {
   transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.landing-testimonial-card:hover .landing-testimonial-media .landing-media-img,
-.landing-testimonial-card:hover .landing-testimonial-media video.landing-media-img {
+.landing-testimonial-card:hover .landing-testimonial-media .landing-media-img {
   transform: scale(1.05);
+}
+
+.landing-testimonial-card:hover .landing-testimonial-video {
+  transform: scale(1.02);
 }
 
 .landing-testimonial-avatar {
@@ -1740,10 +1752,12 @@
   }
 
   .landing-testimonial-media--video {
-    max-height: min(72vw, 300px);
+    max-width: min(280px, 78vw);
   }
 
   .landing-testimonial-media:not(.landing-testimonial-media--video) {
-    height: min(72vw, 300px);
+    height: min(78vw, 320px);
+    max-width: min(280px, 78vw);
+    margin: 0 auto;
   }
 }

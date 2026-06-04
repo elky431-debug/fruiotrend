@@ -1,54 +1,46 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 
 type Props = {
   src: string;
-  poster?: string;
   label: string;
 };
 
-/** Charge et lit la vidéo uniquement quand la carte est visible (réduit latence landing). */
-export function TestimonialVideo({ src, poster, label }: Props) {
+export function TestimonialVideo({ src, label }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     const el = videoRef.current;
     if (!el) return;
 
     const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries.some((e) => e.isIntersecting);
-        if (visible) {
-          if (!el.dataset.loaded) {
-            el.src = src;
-            el.dataset.loaded = "1";
-          }
+      ([entry]) => {
+        if (entry.isIntersecting) {
           void el.play().catch(() => {});
         } else {
           el.pause();
         }
       },
-      { rootMargin: "80px", threshold: 0.2 }
+      { threshold: 0.25 }
     );
 
     observer.observe(el);
     return () => observer.disconnect();
-  }, [src]);
+  }, []);
 
   return (
     <video
       ref={videoRef}
-      poster={poster}
-      className="landing-media-img"
+      className="landing-testimonial-video"
       muted
       loop
       playsInline
-      preload="none"
+      autoPlay
+      preload="metadata"
       aria-label={label}
-      onLoadedData={() => setReady(true)}
-      style={{ opacity: ready ? 1 : 0.85 }}
-    />
+    >
+      <source src={src} type="video/mp4" />
+    </video>
   );
 }
