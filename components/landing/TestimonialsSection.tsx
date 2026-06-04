@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { LANDING_PREVIEW_IMAGES } from "@/lib/landingPreviews";
+import { TestimonialVideo } from "@/components/landing/TestimonialVideo";
 
 type TestimonialItem = {
   handle: string;
@@ -40,16 +41,10 @@ const TESTIMONIALS: TestimonialItem[] = [
 function TestimonialMedia({ item }: { item: TestimonialItem }) {
   if (item.media === "video") {
     return (
-      <video
+      <TestimonialVideo
         src={item.videoSrc}
         poster={item.poster}
-        className="landing-media-img"
-        autoPlay
-        muted
-        loop
-        playsInline
-        preload="metadata"
-        aria-label={`Vidéo ${item.handle}`}
+        label={`Vidéo ${item.handle}`}
       />
     );
   }
@@ -60,7 +55,8 @@ function TestimonialMedia({ item }: { item: TestimonialItem }) {
       alt={item.alt}
       fill
       className="landing-media-img"
-      sizes="(max-width: 768px) 100vw, 33vw"
+      sizes="(max-width: 767px) 100vw, 33vw"
+      loading="lazy"
     />
   );
 }
@@ -73,6 +69,7 @@ export function TestimonialsSection() {
           Ils cartonnent avec{" "}
           <span className="text-gradient">PubMoi</span>
         </h2>
+        <p className="landing-testimonials-hint">3 marques · résultats réels</p>
         <div className="landing-testimonials-grid">
           {TESTIMONIALS.map((t) => (
             <article key={t.handle} className="landing-testimonial-card">
