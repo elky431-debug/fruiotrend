@@ -22,7 +22,7 @@ export function TestimonialVideo({ src, label }: Props) {
           el.pause();
         }
       },
-      { threshold: 0.25 }
+      { threshold: 0.15 }
     );
 
     observer.observe(el);
@@ -32,15 +32,14 @@ export function TestimonialVideo({ src, label }: Props) {
   return (
     <video
       ref={videoRef}
-      className="landing-media-img"
+      className="landing-testimonial-video"
+      src={src}
       muted
       loop
       playsInline
       autoPlay
       preload="metadata"
       aria-label={label}
-    >
-      <source src={src} type="video/mp4" />
-    </video>
+    />
   );
 }

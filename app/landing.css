@@ -568,6 +568,7 @@
   display: grid;
   gap: 1.25rem;
   margin-top: 2.5rem;
+  align-items: start;
 }
 
 @media (min-width: 768px) {
@@ -583,21 +584,30 @@
   overflow: hidden;
 }
 
+/* Zone média 9:16 pleine largeur — pas de max-height (sinon crop paysage) */
 .landing-testimonial-media {
   position: relative;
   width: 100%;
   aspect-ratio: 9 / 16;
-  max-height: 13rem;
   overflow: hidden;
   background: #262018;
 }
 
-.landing-testimonial-media .landing-media-img,
-.landing-testimonial-media video.landing-media-img {
+.landing-testimonial-media .landing-media-img {
   position: absolute;
   inset: 0;
   width: 100% !important;
   height: 100% !important;
+  object-fit: cover;
+  object-position: center center;
+}
+
+.landing-testimonial-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
   object-fit: cover;
   object-position: center center;
 }
@@ -967,8 +977,8 @@
   transform: scale(1.05);
 }
 
-.landing-testimonial-card:hover .landing-testimonial-media video.landing-media-img {
-  transform: scale(1.05);
+.landing-testimonial-card:hover .landing-testimonial-video {
+  transform: scale(1.03);
 }
 
 .landing-testimonial-avatar {
@@ -1743,7 +1753,4 @@
     scroll-snap-align: center;
   }
 
-  .landing-testimonial-media {
-    max-height: 14rem;
-  }
 }
