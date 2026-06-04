@@ -598,25 +598,11 @@
   background: #262018;
 }
 
-/* Cadre téléphone 9:16 — vidéo entière visible (pas de crop carré) */
-.landing-testimonial-media--video {
-  width: 100%;
-  max-width: 280px;
-  height: auto;
-  aspect-ratio: 9 / 16;
-  margin: 0 auto;
-  background: #0a0806;
-}
-
-.landing-testimonial-video {
+.landing-testimonial-media video.landing-media-img {
   position: absolute;
   inset: 0;
-  width: 100%;
-  height: 100%;
-  display: block;
   object-fit: cover;
   object-position: center center;
-  background: #0a0806;
 }
 
 .landing-testimonial-media::after {
@@ -984,8 +970,8 @@
   transform: scale(1.05);
 }
 
-.landing-testimonial-card:hover .landing-testimonial-video {
-  transform: scale(1.02);
+.landing-testimonial-card:hover .landing-testimonial-media video.landing-media-img {
+  transform: scale(1.05);
 }
 
 .landing-testimonial-avatar {
@@ -1751,13 +1737,7 @@
     max-width: 100%;
   }
 
-  .landing-testimonial-media--video {
-    max-width: min(280px, 78vw);
-  }
-
-  .landing-testimonial-media:not(.landing-testimonial-media--video) {
-    height: min(78vw, 320px);
-    max-width: min(280px, 78vw);
-    margin: 0 auto;
+  .landing-testimonial-media {
+    height: min(56vw, 220px);
   }
 }

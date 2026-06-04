@@ -32,7 +32,7 @@ export function TestimonialVideo({ src, label }: Props) {
   return (
     <video
       ref={videoRef}
-      className="landing-testimonial-video"
+      className="landing-media-img"
       muted
       loop
       playsInline

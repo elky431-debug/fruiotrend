@@ -54,7 +54,7 @@ function TestimonialMedia({ item }: { item: TestimonialItem }) {
       alt={item.alt}
       fill
       className="landing-media-img"
-      sizes="(max-width: 767px) 85vw, 280px"
+      sizes="(max-width: 767px) 100vw, 33vw"
       loading="lazy"
     />
   );
@@ -68,18 +68,11 @@ export function TestimonialsSection() {
           Ils cartonnent avec{" "}
           <span className="text-gradient">PubMoi</span>
         </h2>
-        <p className="landing-testimonials-hint">3 marques · format TikTok 9:16</p>
+        <p className="landing-testimonials-hint">3 marques · résultats réels</p>
         <div className="landing-testimonials-grid">
-          {TESTIMONIALS.map((t) => {
-            const isVideo = t.media === "video";
-
-            return (
+          {TESTIMONIALS.map((t) => (
               <article key={t.handle} className="landing-testimonial-card">
-                <div
-                  className={`landing-testimonial-media${
-                    isVideo ? " landing-testimonial-media--video" : ""
-                  }`}
-                >
+                <div className="landing-testimonial-media">
                   <TestimonialMedia item={t} />
                 </div>
                 <div className="landing-testimonial-body">
@@ -95,8 +88,7 @@ export function TestimonialsSection() {
                   )}
                 </div>
               </article>
-            );
-          })}
+          ))}
         </div>
       </div>
     </section>
