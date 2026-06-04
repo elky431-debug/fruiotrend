@@ -68,7 +68,6 @@ export function TestimonialsSection() {
           Ils cartonnent avec{" "}
           <span className="text-gradient">PubMoi</span>
         </h2>
-        <p className="landing-testimonials-hint">3 marques · résultats réels</p>
         <div className="landing-testimonials-grid">
           {TESTIMONIALS.map((t) => (
               <article key={t.handle} className="landing-testimonial-card">
