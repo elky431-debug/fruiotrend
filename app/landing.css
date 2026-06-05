@@ -149,6 +149,8 @@
 
 .landing-root .badge-accent {
   display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 5px 12px;
   border-radius: 99px;
   font-size: 10px;
@@ -589,7 +591,10 @@
 
 @media (min-width: 768px) {
   .landing-testimonials-grid {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
+    max-width: 720px;
+    margin-left: auto;
+    margin-right: auto;
   }
 }
 
@@ -626,6 +631,18 @@
   display: block;
   object-fit: cover;
   object-position: center center;
+  pointer-events: none;
+}
+
+/* Masque l'overlay de contrôles natif (PiP, plein écran) au survol */
+.landing-testimonial-video::-webkit-media-controls,
+.landing-testimonial-video::-webkit-media-controls-enclosure,
+.landing-testimonial-video::-webkit-media-controls-overlay-enclosure,
+.landing-testimonial-video::-webkit-media-controls-panel,
+.landing-testimonial-video::-webkit-media-controls-start-playback-button {
+  display: none !important;
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 .landing-testimonial-media::after {
@@ -1431,89 +1448,122 @@
    NOUVELLES SECTIONS — Features / Stats / Comparaison / CTA
    ============================================================ */
 
-/* ---------- Features (bento) ---------- */
-.landing-features-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 1rem;
-  margin-top: 2.75rem;
+/* ---------- Features (liste éditoriale, sans cadres) ---------- */
+.landing-feature-list {
+  list-style: none;
+  margin: 3rem auto 0;
+  padding: 0;
+  max-width: 760px;
   text-align: left;
 }
 
-@media (min-width: 768px) {
-  .landing-features-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-  .landing-feature-card.span-2 {
-    grid-column: span 1;
-  }
-}
-
-@media (max-width: 767px) {
-  .landing-feature-card.span-2 {
-    grid-column: span 2;
-  }
-}
-
-.landing-feature-card {
+.landing-feature-row {
   position: relative;
-  padding: 1.5rem;
-  border-radius: 18px;
-  background: rgba(29, 22, 17, 0.7);
-  border: 1px solid rgba(255, 92, 157, 0.14);
-  backdrop-filter: blur(10px);
-  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
-    border-color 0.3s ease, box-shadow 0.3s ease;
-  overflow: hidden;
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: start;
+  column-gap: 1.5rem;
+  padding: 1.6rem 0.25rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  transition: padding-left 0.35s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.landing-feature-card::after {
+.landing-feature-row:last-child {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+/* Accent vertical qui apparaît au survol */
+.landing-feature-row::before {
   content: "";
   position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: linear-gradient(135deg, rgba(255, 92, 157, 0.1), transparent 55%);
+  left: 0;
+  top: 1.6rem;
+  bottom: 1.6rem;
+  width: 2px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, #ff6fae, #e32b45);
+  transform: scaleY(0);
+  transform-origin: top;
   opacity: 0;
-  transition: opacity 0.3s ease;
-  pointer-events: none;
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.35s ease;
 }
 
-.landing-feature-card:hover {
-  transform: translateY(-6px);
-  border-color: rgba(255, 92, 157, 0.4);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 40px rgba(227, 43, 69, 0.16);
+.landing-feature-row:hover {
+  padding-left: 1.25rem;
 }
 
-.landing-feature-card:hover::after {
+.landing-feature-row:hover::before {
+  transform: scaleY(1);
   opacity: 1;
 }
 
-.landing-feature-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 14px;
+.landing-feature-index {
+  font-size: 0.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  color: rgba(255, 143, 191, 0.55);
+  padding-top: 0.55rem;
+  transition: color 0.35s ease;
+}
+
+.landing-feature-row:hover .landing-feature-index {
+  color: #ff8fbf;
+}
+
+.landing-feature-glyph {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 24px;
-  margin-bottom: 1rem;
-  background: linear-gradient(135deg, rgba(255, 92, 157, 0.18), rgba(227, 43, 69, 0.18));
-  border: 1px solid rgba(255, 92, 157, 0.28);
-  box-shadow: 0 6px 18px rgba(227, 43, 69, 0.18);
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  color: var(--accent-soft, #ff8fbf);
+  background: rgba(255, 92, 157, 0.08);
+  border: 1px solid rgba(255, 92, 157, 0.16);
+  transition: color 0.35s ease, background 0.35s ease,
+    border-color 0.35s ease, transform 0.35s ease;
+}
+
+.landing-feature-row:hover .landing-feature-glyph {
+  color: #fff8f2;
+  background: linear-gradient(150deg, rgba(255, 92, 157, 0.22), rgba(227, 43, 69, 0.14));
+  border-color: rgba(255, 92, 157, 0.4);
+  transform: scale(1.05);
+}
+
+.landing-feature-body {
+  min-width: 0;
 }
 
 .landing-feature-title {
-  font-size: 1.05rem;
+  font-size: 1.1rem;
   font-weight: 700;
   color: #fff8f2;
-  margin-bottom: 0.4rem;
+  margin-bottom: 0.35rem;
   letter-spacing: -0.01em;
 }
 
 .landing-feature-desc {
-  font-size: 0.875rem;
-  line-height: 1.55;
-  color: #c4b5a8;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: #b8a99c;
+  max-width: 52ch;
+}
+
+@media (max-width: 600px) {
+  .landing-feature-row {
+    grid-template-columns: auto 1fr;
+    column-gap: 1rem;
+    row-gap: 0.6rem;
+  }
+  .landing-feature-index {
+    display: none;
+  }
+  .landing-feature-row:hover {
+    padding-left: 0.9rem;
+  }
 }
 
 /* ---------- Comparaison avant / après ---------- */
@@ -1767,14 +1817,6 @@
 
   .landing-phone-card {
     width: clamp(140px, 42vw, 180px);
-  }
-
-  .landing-features-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .landing-feature-card.span-2 {
-    grid-column: span 1;
   }
 
   .landing-compare-grid {

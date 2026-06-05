@@ -40,6 +40,9 @@ export function TestimonialVideo({ src, label }: Props) {
       autoPlay
       preload="metadata"
       aria-label={label}
+      disablePictureInPicture
+      disableRemotePlayback
+      controlsList="nodownload noplaybackrate nofullscreen"
     />
   );
 }

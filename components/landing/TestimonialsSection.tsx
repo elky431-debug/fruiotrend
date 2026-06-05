@@ -1,5 +1,4 @@
 import Image from "next/image";
-import { LANDING_PREVIEW_IMAGES } from "@/lib/landingPreviews";
 import { TestimonialVideo } from "@/components/landing/TestimonialVideo";
 
 type TestimonialItem = {
@@ -27,14 +26,6 @@ const TESTIMONIALS: TestimonialItem[] = [
     media: "video",
     videoSrc: "/landing/testimonial-pistolero.mp4",
     stats: "CA ×2",
-  },
-  {
-    handle: "@hamuyama_lab",
-    quote:
-      "Hook + voix intégrée PubMoi en une passe — exactement le format TikTok Ads que je cherchais.",
-    media: "image",
-    ...LANDING_PREVIEW_IMAGES.influenceur,
-    stats: "201K likes",
   },
 ];
 
