@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { authFetch } from "@/lib/authFetch";
+import { parseApiJson } from "@/lib/parseApiResponse";
 import { getActiveScenes } from "@/lib/adScenes";
 import {
   downloadAllWithDelay,
@@ -52,6 +53,18 @@ export default function Step3Images({
     mimeType: product.imagesMimeType?.[index] || "image/jpeg",
     url: `data:${product.imagesMimeType?.[index] || "image/jpeg"};base64,${base64}`,
   }));
+
+  const slimImagesForApi = (max = 2) =>
+    productImageRefs.slice(0, max).map(({ base64, mimeType }) => ({
+      base64,
+      mimeType,
+    }));
+
+  const slimInfluencerForApi = () => {
+    const img = product.influencerImage;
+    if (!img?.base64) return null;
+    return { base64: img.base64, mimeType: img.mimeType };
+  };
 
   const fetchProductAnalysis = async (): Promise<string> => {
     if (productAnalysisRef.current) {
@@ -125,12 +138,15 @@ export default function Step3Images({
             product.name,
           productName: product.name,
           productAnalysis,
-          productImages: productImageRefs,
-          packagingImage: product.packagingImage || null,
+          productImages: slimImagesForApi(2),
+          packagingImage: product.packagingImage
+            ? {
+                base64: product.packagingImage.base64,
+                mimeType: product.packagingImage.mimeType,
+              }
+            : null,
           influencerImage:
-            product.influencerMode === "photo"
-              ? product.influencerImage || null
-              : null,
+            product.influencerMode === "photo" ? slimInfluencerForApi() : null,
           influencerTraits:
             product.influencerMode === "photo"
               ? product.influencerTraits || null
@@ -149,7 +165,26 @@ export default function Step3Images({
         }),
       });
 
-      const data = await res.json();
+      const { data, parseError } = await parseApiJson<{
+        error?: string;
+        required?: number;
+        remaining?: number;
+        imageUrl?: string;
+        url?: string;
+      }>(res);
+
+      if (parseError) {
+        setErrors((prev) => ({ ...prev, [id]: parseError }));
+        return;
+      }
+      if (!data) {
+        setErrors((prev) => ({
+          ...prev,
+          [id]: "Réponse serveur invalide.",
+        }));
+        return;
+      }
+
       if (res.status === 402) {
         setErrors((prev) => ({
           ...prev,
@@ -168,7 +203,16 @@ export default function Step3Images({
         return;
       }
 
-      onImageGenerated(id, data.imageUrl || data.url);
+      const imageUrl = data.imageUrl || data.url;
+      if (!imageUrl) {
+        setErrors((prev) => ({
+          ...prev,
+          [id]: "Aucune image reçue du serveur.",
+        }));
+        return;
+      }
+
+      onImageGenerated(id, imageUrl);
       window.dispatchEvent(new Event("credits-updated"));
     } catch (e) {
       setErrors((prev) => ({

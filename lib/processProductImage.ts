@@ -132,3 +132,27 @@ export async function processProductImageFile(
 export function filterImageFiles(files: FileList | File[]): File[] {
   return Array.from(files).filter(isImageFile);
 }
+
+/** Photo influenceur — toujours compressée pour limiter la taille des requêtes API. */
+export async function processInfluencerImageFile(
+  file: File
+): Promise<ProcessedProductImage> {
+  if (!isImageFile(file)) {
+    throw new Error(
+      `« ${file.name} » n'est pas une image. Utilisez JPG, PNG ou WebP.`
+    );
+  }
+  if (isHeic(file)) {
+    throw new Error(
+      "Format HEIC non supporté. Exportez en JPG (iPhone : Réglages → Appareil photo → Le plus compatible)."
+    );
+  }
+  if (file.size > 25 * 1024 * 1024) {
+    throw new Error("Fichier trop lourd (max 25 Mo).");
+  }
+
+  const fallbackMime = file.type || mimeFromName(file.name);
+  const dataUrl = await readFileAsDataUrl(file);
+  const compressed = await compressDataUrl(dataUrl, 1024, 0.8);
+  return dataUrlToResult(compressed, fallbackMime);
+}

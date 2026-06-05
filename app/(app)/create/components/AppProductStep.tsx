@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import {
   filterImageFiles,
   processProductImageFile,
+  processInfluencerImageFile,
 } from "@/lib/processProductImage";
 import type { InfluencerTraits, ProductInput } from "@/types/ad";
 import { fetchInfluencerTraitsFromUpload } from "../lib/analyzeInfluencerUpload";
@@ -209,7 +210,7 @@ export default function AppProductStep({ onNext, loading, initial }: Props) {
     setInfluencerError(null);
     try {
       const { base64, mimeType, previewUrl } =
-        await processProductImageFile(file);
+        await processInfluencerImageFile(file);
       const asset = { base64, mimeType, url: previewUrl };
       setInfluencerImage(asset);
       setInfluencerTraits(null);

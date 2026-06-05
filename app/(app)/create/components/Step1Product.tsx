@@ -9,6 +9,7 @@ import {
 import {
   filterImageFiles,
   processProductImageFile,
+  processInfluencerImageFile,
 } from "@/lib/processProductImage";
 import type { AdTemplate, InfluencerTraits, ProductInput } from "@/types/ad";
 import { fetchInfluencerTraitsFromUpload } from "../lib/analyzeInfluencerUpload";
@@ -328,7 +329,7 @@ export default function Step1Product({
 
     try {
       const { base64, mimeType, previewUrl } =
-        await processProductImageFile(file);
+        await processInfluencerImageFile(file);
       const asset = { base64, mimeType, url: previewUrl };
       setInfluencerImage(asset);
       setInfluencerTraits(null);

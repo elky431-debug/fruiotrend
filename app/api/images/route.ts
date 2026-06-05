@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import sharp from "sharp";
 import {
   buildImageSubjectPromptBlock,
   buildImageTemplatePromptBlock,
@@ -15,7 +16,6 @@ import {
 import { requireCredits } from "@/lib/apiCredits";
 import { analyzeProductImages } from "@/lib/productAnalysis";
 import {
-  analyzeInfluencerPhoto,
   buildInfluencerTraitsConstraintBlock,
   validateAndLogInfluencerTraits,
   type InfluencerTraits,
@@ -164,17 +164,12 @@ export async function POST(req: NextRequest) {
     let influencerTraits: InfluencerTraits | null =
       cachedInfluencerTraits ?? null;
 
-    if (hasInfluencerImage) {
-      if (influencerTraits) {
-        validateAndLogInfluencerTraits(influencerTraits);
-      } else {
-        influencerTraits = await analyzeInfluencerPhoto(influencerImage);
-        if (!influencerTraits) {
-          console.warn(
-            "[IMAGES] Traits influenceur non extraits — génération avec photo seule"
-          );
-        }
-      }
+    if (hasInfluencerImage && influencerTraits) {
+      validateAndLogInfluencerTraits(influencerTraits);
+    } else if (hasInfluencerImage) {
+      console.warn(
+        "[IMAGES] Traits manquants — génération Pixar sans re-analyse serveur"
+      );
     }
 
     const isApp = productType === "app";
@@ -216,7 +211,8 @@ export async function POST(req: NextRequest) {
             topP: 0.8,
           });
           if (result) {
-            return NextResponse.json({ ...result, model: modelName });
+            const compressed = await compressForApiResponse(result);
+            return NextResponse.json({ ...compressed, model: modelName });
           }
           errors.push(`${modelName}: pas d'image`);
         } catch (err) {
@@ -269,7 +265,8 @@ export async function POST(req: NextRequest) {
           console.log("[IMAGES] Story — modèle:", modelName, resolvedStoryTheme);
           const result = await generateImage(modelName, parts);
           if (result) {
-            return NextResponse.json({ ...result, model: modelName });
+            const compressed = await compressForApiResponse(result);
+            return NextResponse.json({ ...compressed, model: modelName });
           }
           errors.push(`${modelName}: pas d'image`);
         } catch (err) {
@@ -336,7 +333,10 @@ export async function POST(req: NextRequest) {
           keepInfluencerBackground,
           generatedBackground
         );
-    console.log("[IMAGES] Analyse forme:", productAnalysis.substring(0, 120));
+    console.log(
+      "[IMAGES] Analyse forme:",
+      (productAnalysis || description).slice(0, 120)
+    );
 
     const parts = buildContentParts(
       normalizedImages,
@@ -434,8 +434,9 @@ export async function POST(req: NextRequest) {
         "via",
         attempt.model
       );
+      const compressed = await compressForApiResponse(attempt.result);
       return NextResponse.json({
-        ...attempt.result,
+        ...compressed,
         model: attempt.model,
       });
     }
@@ -622,6 +623,39 @@ Young, energetic, relatable. Large expressive Pixar cartoon eyes, smooth
 glossy 3D CGI skin. NOT photorealistic — fully 3D animated movie look
 (Toy Story / Luca). Holds the item being promoted, showing it to camera.
 Looks directly at the viewer — TikTok/UGC energy.`;
+}
+
+async function compressForApiResponse(result: {
+  imageBase64: string;
+  mimeType: string;
+  imageUrl: string;
+}): Promise<{ imageBase64: string; mimeType: string; imageUrl: string }> {
+  try {
+    const buf = Buffer.from(result.imageBase64, "base64");
+    const out = await sharp(buf)
+      .resize(1080, 1920, { fit: "inside", withoutEnlargement: true })
+      .webp({ quality: 80 })
+      .toBuffer();
+    const b64 = out.toString("base64");
+    console.log(
+      "[IMAGES] Compressé:",
+      Math.round(buf.length / 1024),
+      "KB →",
+      Math.round(out.length / 1024),
+      "KB webp"
+    );
+    return {
+      imageBase64: b64,
+      mimeType: "image/webp",
+      imageUrl: `data:image/webp;base64,${b64}`,
+    };
+  } catch (err) {
+    console.warn(
+      "[IMAGES] Compression échouée:",
+      err instanceof Error ? err.message : err
+    );
+    return result;
+  }
 }
 
 async function generateImage(
