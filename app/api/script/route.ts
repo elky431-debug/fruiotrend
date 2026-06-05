@@ -895,16 +895,30 @@ async function buildAppScriptResponse(
     const styleBlock =
       APP_SCRIPT_PROMPTS[scriptMode] || APP_SCRIPT_PROMPTS["probleme-solution"];
     const appSystemPrompt = `Tu génères des scripts de pubs pour applications mobiles/sites web.
-Le personnage parle à la 1ère personne comme si c'était L'APPLI ELLE-MÊME qui parle.
+C'est l'INFLUENCEUR (personnage Pixar) qui parle directement à la caméra — PAS un narrateur externe, PAS l'appli qui parle d'elle-même.
 
 APPLI : ${appName}
 DESCRIPTION : ${product.description}
 DURÉE : ${totalDuration}s — ${nScenes} scène(s) — cible ${wordsPerScene} mots/voiceover
 STYLE : ${styleBlock}
 
+VOICEOVER STYLE — INFLUENCEUR :
+- Parle à la 1ère personne : "Je", "moi", "j'utilise"
+- Ton authentique et enthousiaste, pas commercial
+- Style recommandation amicale : "Franchement je comprends pas pourquoi j'utilisais pas ça avant"
+- PAS de narration externe — c'est le personnage qui parle directement
+
+EXEMPLES :
+✅ "Franchement, avant cette appli je galérais. Maintenant c'est réglé en 2 minutes."
+✅ "Si t'as pas encore essayé ça, tu rates quelque chose de ouf."
+✅ "Je l'utilise tous les jours depuis 3 semaines, sérieusement."
+❌ "Ce produit vous aidera à..." (trop commercial)
+❌ "Notre application..." (trop formel)
+❌ "Je suis ${appName}..." (l'appli ne parle pas — c'est l'influenceur qui recommande)
+
 RÈGLES :
 - ${minWords} à ${maxWords} mots par voiceover (cible ${wordsPerScene})
-- L'appli parle à la 1ère personne ("Je", "moi")
+- L'influenceur recommande l'appli à la 1ère personne
 - Ton direct et percutant — zéro corporate speak
 - Tutoiement, s'adresse à UNE personne (cible : ${product.targetAudience})
 
@@ -951,11 +965,11 @@ Il doit y avoir EXACTEMENT ${nScenes} scène(s).`;
       const fallback =
         nScenes > 1
           ? [
-              `Tu galères encore à faire ça à la main ?`,
-              `${appName} fait tout pour toi en quelques secondes. Télécharge-moi maintenant.`,
+              `Franchement, avant ${appName} je galérais à faire ça à la main.`,
+              `Je l'utilise tous les jours maintenant — sérieusement, télécharge-la.`,
             ]
           : [
-              `${appName} fait tout pour toi en quelques secondes. Télécharge-moi maintenant.`,
+              `Franchement, ${appName} m'a changé la vie. Télécharge-la, tu vas comprendre.`,
             ];
       voiceovers = fallback.slice(0, nScenes);
     }

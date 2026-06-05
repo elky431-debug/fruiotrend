@@ -287,20 +287,43 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const productContext = buildProductContextForBackground({
+      description,
+      analysis: productAnalysis || description,
+    });
+    const generatedBackground = isApp
+      ? resolveSceneBackground(scene?.background, description)
+      : resolveSceneBackground(scene?.background, productContext);
+
+    const influencerContext = {
+      isApp,
+      appDescription: description,
+      sceneBackground: generatedBackground,
+    };
+
+    const needsInfluencerPrompt =
+      hasInfluencerImage ||
+      templateKey === "influenceur" ||
+      (isApp && influencerMode === "photo");
+
+    const influencerInstruction = needsInfluencerPrompt
+      ? buildInfluencerInstruction(
+          hasInfluencerImage ? "photo" : influencerMode,
+          hasInfluencerImage,
+          keepInfluencerBackground,
+          influencerTraits,
+          influencerContext
+        )
+      : "";
+
     const imagePrompt = isApp
       ? buildAppImagePrompt(
           scene || {},
           description,
           normalizedImages.length > 0,
-          hasInfluencerImage
-            ? buildInfluencerInstruction(
-                "photo",
-                true,
-                keepInfluencerBackground,
-                influencerTraits
-              )
-            : "",
-          keepInfluencerBackground
+          influencerInstruction,
+          keepInfluencerBackground,
+          generatedBackground
         )
       : buildImagePrompt(
           scene || {},
@@ -309,15 +332,9 @@ export async function POST(req: NextRequest) {
           productAnalysis,
           targetAudience,
           Boolean(packagingImage?.base64),
-          templateKey === "influenceur"
-            ? buildInfluencerInstruction(
-                influencerMode,
-                hasInfluencerImage,
-                keepInfluencerBackground,
-                influencerTraits
-              )
-            : "",
-          keepInfluencerBackground
+          influencerInstruction,
+          keepInfluencerBackground,
+          generatedBackground
         );
     console.log("[IMAGES] Analyse forme:", productAnalysis.substring(0, 120));
 
@@ -339,11 +356,19 @@ export async function POST(req: NextRequest) {
 
     // Essaie chaque modèle ; renvoie {result, model} ou null si aucun n'a
     // produit d'image (refus de sécurité, IMAGE_OTHER, etc.).
+    const pixarGenOpts = hasInfluencerImage
+      ? { temperature: 1.0, topP: 0.95 }
+      : undefined;
+
     const tryModels = async (attemptParts: ContentPart[]) => {
       for (const modelName of models) {
         try {
           console.log("[IMAGES] Modèle:", modelName);
-          const result = await generateImage(modelName, attemptParts);
+          const result = await generateImage(
+            modelName,
+            attemptParts,
+            pixarGenOpts
+          );
           if (result) return { result, model: modelName };
           errors.push(`${modelName}: pas d'image dans la réponse`);
         } catch (err) {
@@ -370,7 +395,8 @@ export async function POST(req: NextRequest) {
         "photo",
         false,
         keepInfluencerBackground,
-        influencerTraits
+        influencerTraits,
+        influencerContext
       );
       const fallbackPrompt = isApp
         ? buildAppImagePrompt(
@@ -378,7 +404,8 @@ export async function POST(req: NextRequest) {
             description,
             normalizedImages.length > 0,
             traitsOnlyInstruction,
-            keepInfluencerBackground
+            keepInfluencerBackground,
+            generatedBackground
           )
         : buildImagePrompt(
             scene || {},
@@ -388,7 +415,8 @@ export async function POST(req: NextRequest) {
             targetAudience,
             Boolean(packagingImage?.base64),
             templateKey === "influenceur" ? traitsOnlyInstruction : "",
-            keepInfluencerBackground
+            keepInfluencerBackground,
+            generatedBackground
           );
       const fallbackParts = buildContentParts(
         normalizedImages,
@@ -499,63 +527,92 @@ function buildContentParts(
   return parts;
 }
 
+function buildInfluencerBackgroundInstruction(
+  keepBackground: boolean,
+  generatedBackground: string
+): string {
+  if (keepBackground) {
+    return `BACKGROUND: Reproduce the background from the reference photo but stylized in Pixar CGI style — same location but fully cartoon-rendered, same colors but Pixar-quality rendering. NOT a real photo background.`;
+  }
+  return `BACKGROUND: ${generatedBackground} — Pixar CGI quality, bright and vivid, matching the product/app universe`;
+}
+
 function buildInfluencerInstruction(
   influencerMode: "ai" | "photo" | undefined,
   hasInfluencerImage: boolean,
   keepBackground = false,
-  traits: InfluencerTraits | null = null
+  traits: InfluencerTraits | null = null,
+  context?: {
+    isApp?: boolean;
+    appDescription?: string;
+    sceneBackground?: string;
+  }
 ): string {
-  const usePhotoReference = influencerMode === "photo" && (hasInfluencerImage || traits);
+  const usePhotoReference =
+    influencerMode === "photo" && (hasInfluencerImage || traits);
 
   if (usePhotoReference) {
-    const backgroundLine = keepBackground
-      ? "BACKGROUND: keep the EXACT same setting / room / decor / lighting as the reference image, re-rendered in Pixar 3D CGI style. Do NOT invent a new environment."
-      : "BACKGROUND: place the character in the scene environment described below, fully rendered in Pixar 3D CGI (modern lifestyle, warm lighting, bokeh).";
-
     const traitsBlock = traits
       ? buildInfluencerTraitsConstraintBlock(traits)
       : "";
 
-    const referenceLine = hasInfluencerImage
-      ? "The FIRST reference image above is the uploaded character photo — analyze it and match every trait listed below."
-      : "No reference image attached — use ONLY the locked traits below (extracted from the user's upload).";
+    const backgroundLine = buildInfluencerBackgroundInstruction(
+      keepBackground,
+      context?.sceneBackground || "modern lifestyle setting with warm Pixar lighting"
+    );
+
+    const poseBlock = context?.isApp
+      ? `POSE AND FRAMING:
+- Character faces camera directly, confident and friendly
+- Holding a smartphone in one hand, screen facing camera
+- The smartphone screen shows: ${context.appDescription || "the app interface"}
+- Other hand pointing at the phone or giving thumbs up
+- Framed from chest up, 9:16 vertical`
+      : `POSE AND FRAMING:
+- Character faces camera directly, confident and friendly
+- Holding the promoted product prominently toward camera
+- Direct eye contact with viewer — TikTok/UGC energy
+- Framed from chest up, 9:16 vertical`;
+
+    const referenceNote = hasInfluencerImage
+      ? "The FIRST reference image is the uploaded photo — you MUST transform it, NOT return it."
+      : "Use the locked traits below (extracted from the user's upload).";
 
     return `
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-THIS IS NOT A PHOTO — THIS IS A PIXAR 3D CGI ANIMATION
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+TASK: Transform this real person photo into a Pixar 3D CGI animated character.
+${referenceNote}
 
-${referenceLine}
-Transform this person/character into an ORIGINAL Pixar/DreamWorks 3D CGI
-animated character. The output MUST look like a frame from a Pixar movie — NOT a photo.
-The character MUST be recognizably derived from the uploaded reference.
+TRANSFORMATION RULES — NON-NEGOTIABLE:
+- The output MUST be a Pixar 3D CGI illustration — NOT a real photo
+- NOT photorealistic, NOT semi-realistic, NOT enhanced photo
+- FULL Pixar animation style: Incredibles, Toy Story, Turning Red quality
+- The person's face features must be recognizable but fully cartoon-stylized:
+  * Larger expressive eyes (Pixar proportions)
+  * Simplified smooth skin with Pixar shading
+  * Slightly exaggerated features in cartoon style
+  * Warm subsurface scattering light on skin
 
 ${traitsBlock}
 
-TRANSFORMATION RULES (Pixar stylization ON TOP of locked identity):
-1. STYLE: Full Pixar 3D CGI render — smooth glossy skin, subsurface scattering
-2. EYES: Larger and more expressive (Pixar style) — but same eye color/spacing as reference
-3. SKIN: EXACT same skin tone as locked traits — Pixar 3D texture only
-4. HAIR: EXACT same color, length, style as locked traits — Pixar 3D hair
-5. FACE: Same face structure as reference — stylize softly, do NOT replace with a different face
-6. OUTFIT: Same clothing colors and style as reference
-7. ACCESSORIES: Keep all jewelry, hats, glasses — Pixar 3D
+WHAT TO KEEP FROM THE REFERENCE PHOTO:
+- Same gender and approximate age
+- Same hair color and general hair style
+- Same skin tone (but rendered in Pixar style)
+- Same facial structure recognizable to their friends
+- If wearing glasses/jewelry/accessories → keep them in Pixar style
 
-WHAT THE CHARACTER DOES:
-- Holds the item being promoted (product or smartphone showing the app), to camera
-- Direct eye contact with viewer — TikTok/UGC energy
-- Expression: ${traits?.expression || "enthusiastic, friendly"}
-
-FORBIDDEN:
-❌ Generating a random default character unrelated to the upload
-❌ Outputting a realistic photo or photo-realistic render
-❌ Changing gender, hair color, hair style, or skin tone
-❌ Inventing a different face or body type
-❌ Flat 2D drawing — MUST be 3D CGI Pixar style
+${poseBlock}
 
 ${backgroundLine}
-VERTICAL 9:16 portrait format.
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!`;
+
+ABSOLUTELY FORBIDDEN:
+- Keeping the original photo as-is or only color-grading it
+- Semi-realistic rendering or photographic skin/lighting
+- Generating a random default character unrelated to the upload
+- Changing gender, hair color, hair style, or skin tone
+- Adding watermarks or text overlays
+
+OUTPUT: A full Pixar 3D CGI illustration ready for a TikTok ad — 9:16 vertical.`;
   }
 
   return `
@@ -664,7 +721,8 @@ function buildImagePrompt(
   targetAudience?: string,
   hasPackaging?: boolean,
   influencerInstruction?: string,
-  keepInfluencerBackground = false
+  keepInfluencerBackground = false,
+  generatedBackground?: string
 ): string {
   const analysis =
     productAnalysis?.trim() || productDescription?.trim() || "See reference photos";
@@ -672,9 +730,12 @@ function buildImagePrompt(
     description: productDescription,
     analysis,
   });
+  const sceneBg =
+    generatedBackground ||
+    resolveSceneBackground(scene.background, productContext);
   const background = keepInfluencerBackground
-    ? "Keep the EXACT same background / setting as the reference influencer photo (same room, decor, lighting), re-rendered in Pixar 3D CGI style. Do NOT invent a new environment."
-    : resolveSceneBackground(scene.background, productContext);
+    ? buildInfluencerBackgroundInstruction(true, sceneBg)
+    : sceneBg;
   const sceneDesc = sanitizeSceneDescription(
     scene.visual_description || scene.description || "",
     background
@@ -752,13 +813,13 @@ ${subjectBlock}
 ${packagingInstruction}
 
 ━━━ PIXAR STYLE ━━━
-- Pixar "Toy Story 4" quality 3D CGI — NOT photorealistic, NOT dark cinematic
-- Subsurface scattering on all surfaces
+- Pixar "Toy Story 4" / Turning Red quality 3D CGI — NEVER photorealistic
+- Subsurface scattering on all surfaces — cartoon skin, NOT photo skin
 - Colors: VIBRANT and OVERSATURATED — 40% more vivid than reality
 - Lighting: ${mood} — must match the mandatory background environment
 - Smooth 3D surfaces with Pixar-quality textures
 - Depth of field bokeh on background elements
-- NOT flat, NOT cartoon 2D, NOT dark
+- NOT flat 2D, NOT semi-realistic, NOT a filtered photograph
 
 ━━━ SCENE ━━━
 ${sceneDesc}
@@ -776,12 +837,16 @@ function buildAppImagePrompt(
   appDescription: string,
   hasScreenshots: boolean,
   influencerInstruction = "",
-  keepInfluencerBackground = false
+  keepInfluencerBackground = false,
+  generatedBackground?: string
 ): string {
   const sceneDesc = scene.visual_description || scene.description || "";
+  const sceneBg =
+    generatedBackground ||
+    resolveSceneBackground(scene.background, appDescription);
   const background = keepInfluencerBackground
-    ? "Keep the EXACT same background / setting as the reference influencer photo (same room, decor, lighting), re-rendered in Pixar 3D CGI style. Do NOT invent a new environment."
-    : resolveSceneBackground(scene.background, appDescription);
+    ? buildInfluencerBackgroundInstruction(true, sceneBg)
+    : sceneBg;
   const backgroundBlock = buildBackgroundMandatoryBlock(background);
   const mouthExpr = scene.mouth_expression || mouthHintForEmotion(scene.emotion);
   const hasInfluencerPhoto = Boolean(influencerInstruction);
@@ -790,8 +855,9 @@ function buildAppImagePrompt(
 ${backgroundBlock}
 
 MANDATORY STYLE: the image MUST be a fully 3D ANIMATED Pixar/DreamWorks CGI
-render (Toy Story / Luca look) — NEVER a photograph, NEVER photorealistic.
-The character is a 3D cartoon, even when inspired by a reference photo.
+render (Incredibles / Turning Red quality) — NEVER a photograph, NEVER
+photorealistic, NEVER semi-realistic. If a reference photo is provided, you
+MUST cartoon-stylize the person completely — NOT return an enhanced photo.
 
 THIS IS AN APP ADVERTISEMENT — NOT a physical product.
 
@@ -813,13 +879,13 @@ Setting: ${background}
 ━━━ CHARACTER ━━━
 ${
   hasInfluencerPhoto
-    ? "- An ORIGINAL 3D PIXAR CARTOON presenter derived from the uploaded reference — SAME gender, hair, face structure, skin tone (see HARD CONSTRAINTS above). Big exaggerated Pixar eyes, smooth glossy 3D CGI skin. NOT a random character."
+    ? "- FULL Pixar 3D CGI cartoon derived from the uploaded reference — SAME gender, hair, face structure, skin tone (see TASK above). Big exaggerated Pixar eyes, smooth glossy cartoon skin. NOT a photo. NOT a random character."
     : "- Stylized 3D Pixar human character with big cartoon eyes and glossy CGI skin"
 }
-- Holds a smartphone in both hands (or one hand), facing camera
-- The smartphone screen shows the app interface${hasScreenshots ? " matching the screenshots above" : ""}
-- Character looks enthusiastic, direct eye contact with the viewer
-- TikTok/UGC presenter energy
+- Faces camera directly, confident and friendly
+- Holds smartphone in one hand, screen facing camera${hasScreenshots ? " (UI from screenshots above)" : ""}
+- Other hand pointing at phone or thumbs up
+- Chest-up framing, TikTok/UGC presenter energy
 - Mouth expression: ${mouthExpr}
 
 ━━━ SMARTPHONE ━━━

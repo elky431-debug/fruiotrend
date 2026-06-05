@@ -649,8 +649,8 @@ export default function AppProductStep({ onNext, loading, initial }: Props) {
                 [
                   {
                     mode: "keep" as const,
-                    label: "🖼 Garder le décor de la photo",
-                    sub: "Même fond que ta photo",
+                    label: "Fond de ta photo en style Pixar",
+                    sub: "Le décor de ta photo, transformé en style Pixar",
                   },
                   {
                     mode: "change" as const,
