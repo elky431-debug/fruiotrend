@@ -14,6 +14,10 @@ const execFileAsync = promisify(execFile);
 export const maxDuration = 300;
 export const runtime = "nodejs";
 
+/** Geometry-only scaling — NO drawtext, subtitles, or text overlays */
+const SCALE_VF =
+  "scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280";
+
 type SceneInput = {
   videoUrl?: string | null;
   videoBase64?: string | null;
@@ -62,8 +66,6 @@ async function assembleClipUrlsOnly(clipUrls: string[]) {
 
   try {
     const normalizedPaths: string[] = [];
-    const vf =
-      "scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280";
 
     for (let i = 0; i < clipUrls.length; i++) {
       const clipPath = path.join(tmpDir, `clip_${i}.mp4`);
@@ -77,7 +79,7 @@ async function assembleClipUrlsOnly(clipUrls: string[]) {
         "-i",
         clipPath,
         "-vf",
-        vf,
+        SCALE_VF,
         "-c:v",
         "libx264",
         "-preset",
@@ -231,28 +233,23 @@ export async function POST(req: NextRequest) {
         continue;
       }
 
-      const vf =
-        "scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280";
+      const normVideoPath = path.join(tmpDir, `norm_video_${i}.mp4`);
 
       if (scene.audioBase64) {
         const rawAudio = Buffer.from(scene.audioBase64, "base64");
         const wavBuffer = ensureWavBuffer(rawAudio, scene.audioMimeType);
         fs.writeFileSync(audioPath, wavBuffer);
 
-        // Choix du filtre vidéo :
-        // - Vidéo déjà synchronisée (lip sync) : la bouche est déjà calée sur
-        //   la voix → on NE time-stretch PAS, simple mux 1:1 + tpad sécurité.
-        // - Vidéo muette (fallback) : on cale la durée de la vidéo sur celle de
-        //   la voix (setpts) pour que le perso "parle" pendant toute la voix.
-        let vfWithPad = `${vf},tpad=stop_mode=clone:stop_duration=2`;
+        // Pass 1 — geometry-only video filters (scale / tpad / setpts). NO text.
+        let geometryVf = `${SCALE_VF},tpad=stop_mode=clone:stop_duration=2`;
         if (!scene.embeddedAudio) {
           const audioDur = await probeDurationSeconds(ffmpeg, audioPath);
           const videoDur = await probeDurationSeconds(ffmpeg, videoPath);
-          vfWithPad = `${vf},tpad=stop_mode=clone:stop_duration=30`;
+          geometryVf = `${SCALE_VF},tpad=stop_mode=clone:stop_duration=30`;
           if (audioDur && videoDur && audioDur > 0.3 && videoDur > 0.3) {
             const ratio = audioDur / videoDur;
             if (ratio >= 0.5 && ratio <= 2.5) {
-              vfWithPad = `${vf},setpts=${ratio.toFixed(
+              geometryVf = `${SCALE_VF},setpts=${ratio.toFixed(
                 4
               )}*PTS,tpad=stop_mode=clone:stop_duration=2`;
               console.log(
@@ -261,9 +258,9 @@ export async function POST(req: NextRequest) {
                 )} (voix ${audioDur.toFixed(1)}s / vidéo ${videoDur.toFixed(1)}s)`
               );
             } else if (ratio > 2.5) {
-              vfWithPad = `${vf},tpad=stop_mode=clone:stop_duration=30`;
+              geometryVf = `${SCALE_VF},tpad=stop_mode=clone:stop_duration=30`;
             } else {
-              vfWithPad = vf;
+              geometryVf = SCALE_VF;
             }
           }
         }
@@ -273,14 +270,8 @@ export async function POST(req: NextRequest) {
             "-y",
             "-i",
             videoPath,
-            "-i",
-            audioPath,
-            "-map",
-            "0:v:0",
-            "-map",
-            "1:a:0",
             "-vf",
-            vfWithPad,
+            geometryVf,
             "-c:v",
             "libx264",
             "-preset",
@@ -289,6 +280,23 @@ export async function POST(req: NextRequest) {
             "23",
             "-r",
             "30",
+            "-an",
+            normVideoPath,
+          ]);
+
+          // Pass 2 — mux vidéo + voix sans filtre texte (pas de drawtext/subtitles)
+          await execFileAsync(ffmpeg, [
+            "-y",
+            "-i",
+            normVideoPath,
+            "-i",
+            audioPath,
+            "-map",
+            "0:v:0",
+            "-map",
+            "1:a:0",
+            "-c:v",
+            "libx264",
             "-c:a",
             "aac",
             "-b:a",
@@ -314,7 +322,7 @@ export async function POST(req: NextRequest) {
           "-map",
           "0:v:0",
           "-vf",
-          vf,
+          SCALE_VF,
           "-c:v",
           "libx264",
           "-preset",

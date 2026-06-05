@@ -29,6 +29,32 @@ const FALLBACK_IMAGE_MODELS = [
   "gemini-3.1-flash-image-preview",
 ];
 
+const NO_TEXT_IN_IMAGE_RULE = `
+ABSOLUTELY NO TEXT IN THE IMAGE:
+- NO words, NO letters, NO numbers anywhere in the scene
+- NO signs with text, NO posters with text, NO screens with readable text
+- NO watermarks, NO brand names written out, NO slogans
+- NO decorative text overlays, NO quotes, NO captions
+- The background must be completely free of any written language
+- If the scene naturally contains signage (shops, streets), make signs BLANK or unreadable
+- Exception: the phone screen may show a blurred/stylized app interface — but NO readable text on it`.trim();
+
+function appendNoTextRule(prompt: string): string {
+  return `${prompt.trim()}\n\n${NO_TEXT_IN_IMAGE_RULE}`;
+}
+
+function buildInfluencerBackgroundNoTextRules(
+  keepOriginalBackground: boolean
+): string {
+  return `
+BACKGROUND RULES:
+- Keep the background from the reference photo (${keepOriginalBackground ? "same location" : "new generated background"})
+- BUT remove ALL text from the background — any signs, posters, or writing must be BLANK
+- The background should look natural and clean, like a professional photo location
+- NO promotional text, NO slogans, NO brand names visible anywhere
+- The phone screen the character holds: show a blurred/out-of-focus app interface — NOT readable text`.trim();
+}
+
 type ProductImageInput =
   | string
   | {
@@ -533,7 +559,7 @@ function buildInfluencerBackgroundInstruction(
   generatedBackground: string
 ): string {
   if (keepBackground) {
-    return `BACKGROUND: Reproduce the background from the reference photo but stylized in Pixar CGI style — same location but fully cartoon-rendered, same colors but Pixar-quality rendering. NOT a real photo background.`;
+    return `BACKGROUND: Reproduce the background from the reference photo but stylized in Pixar CGI style — same location but fully cartoon-rendered, same colors but Pixar-quality rendering. NOT a real photo background. Remove ALL text from signs, posters, and walls — make them blank or unreadable.`;
   }
   return `BACKGROUND: ${generatedBackground} — Pixar CGI quality, bright and vivid, matching the product/app universe`;
 }
@@ -566,7 +592,7 @@ function buildInfluencerInstruction(
       ? `POSE AND FRAMING:
 - Character faces camera directly, confident and friendly
 - Holding a smartphone in one hand, screen facing camera
-- The smartphone screen shows: ${context.appDescription || "the app interface"}
+- The smartphone screen shows a blurred/out-of-focus stylized app interface — NOT readable text
 - Other hand pointing at the phone or giving thumbs up
 - Framed from chest up, 9:16 vertical`
       : `POSE AND FRAMING:
@@ -579,7 +605,7 @@ function buildInfluencerInstruction(
       ? "The FIRST reference image is the uploaded photo — you MUST transform it, NOT return it."
       : "Use the locked traits below (extracted from the user's upload).";
 
-    return `
+    return appendNoTextRule(`
 TASK: Transform this real person photo into a Pixar 3D CGI animated character.
 ${referenceNote}
 
@@ -606,23 +632,26 @@ ${poseBlock}
 
 ${backgroundLine}
 
+${buildInfluencerBackgroundNoTextRules(keepBackground)}
+
 ABSOLUTELY FORBIDDEN:
 - Keeping the original photo as-is or only color-grading it
 - Semi-realistic rendering or photographic skin/lighting
 - Generating a random default character unrelated to the upload
 - Changing gender, hair color, hair style, or skin tone
 - Adding watermarks or text overlays
+- Any readable text in the background or on the phone screen
 
-OUTPUT: A full Pixar 3D CGI illustration ready for a TikTok ad — 9:16 vertical.`;
+OUTPUT: A full Pixar 3D CGI illustration ready for a TikTok ad — 9:16 vertical.`);
   }
 
-  return `
+  return appendNoTextRule(`
 CHARACTER — AI GENERATED PIXAR:
 Create an original stylized 3D Pixar human character.
 Young, energetic, relatable. Large expressive Pixar cartoon eyes, smooth
 glossy 3D CGI skin. NOT photorealistic — fully 3D animated movie look
 (Toy Story / Luca). Holds the item being promoted, showing it to camera.
-Looks directly at the viewer — TikTok/UGC energy.`;
+Looks directly at the viewer — TikTok/UGC energy.`);
 }
 
 async function compressForApiResponse(result: {
@@ -744,7 +773,7 @@ Do NOT use a living room, salon, or neutral/plain background.
 Do NOT use a white or grey studio background.
 The character/product must be placed IN this exact environment.
 The background must be visible and contextually relevant to the product.
-Minimum 15 words of environmental detail must be readable in the scene.`;
+Minimum 15 words of environmental detail must be visible in the scene.`;
 }
 
 function buildImagePrompt(
@@ -822,7 +851,7 @@ The packaging image is provided in the reference above — reproduce it EXACTLY:
   const shapeBlock = buildShapeMandatoryBlock(analysis);
   const finalCheck = buildShapeFinalCheckBlock(analysis);
 
-  return `${shapeBlock}
+  return appendNoTextRule(`${shapeBlock}
 
 Create a Pixar/DreamWorks 3D CGI advertisement image.
 ${backgroundBlock}
@@ -863,7 +892,7 @@ Setting: ${background}
 ${formatHint}
 
 ${finalCheck}
-`;
+`);
 }
 
 function buildAppImagePrompt(
@@ -885,7 +914,7 @@ function buildAppImagePrompt(
   const mouthExpr = scene.mouth_expression || mouthHintForEmotion(scene.emotion);
   const hasInfluencerPhoto = Boolean(influencerInstruction);
 
-  return `Create a Pixar/DreamWorks 3D CGI advertisement image.
+  return appendNoTextRule(`Create a Pixar/DreamWorks 3D CGI advertisement image.
 ${backgroundBlock}
 
 MANDATORY STYLE: the image MUST be a fully 3D ANIMATED Pixar/DreamWorks CGI
@@ -901,7 +930,7 @@ ${
     ? `
 ━━━ APP INTERFACE REFERENCE ━━━
 The ${hasInfluencerPhoto ? "LAST reference image(s)" : "screenshots provided above"} show the real app interface.
-Reproduce this UI faithfully on the smartphone screen — same layout, colors and key elements.`
+Use them only as color/layout inspiration — render a blurred/out-of-focus stylized UI on the phone screen with NO readable text.`
     : ""
 }
 ${influencerInstruction}
@@ -924,7 +953,7 @@ ${
 
 ━━━ SMARTPHONE ━━━
 - Modern iPhone/Android style, slightly oversized Pixar proportions
-- Screen is bright, clearly visible, showing the app UI
+- Screen is bright and visible but shows a blurred/stylized app interface — NO readable text
 - Screen glow creates natural lighting on the character's face
 
 ━━━ PIXAR STYLE ━━━
@@ -933,7 +962,7 @@ ${
 - Depth of field bokeh on background elements
 
 ━━━ FORMAT ━━━
-Vertical 9:16 — character and smartphone clearly framed, cinematic lighting.`;
+Vertical 9:16 — character and smartphone clearly framed, cinematic lighting.`);
 }
 
 type StorySceneInput = {
@@ -1031,7 +1060,7 @@ function buildWojakActConfig(
           : "standing straight and confident, holding the product with both hands facing camera at chest height"),
       background: `${envBase}, warm golden light, bright clean organized space`,
       product: isApp
-        ? `Smartphone showing "${productName}" app UI held clearly facing camera — reference screenshots provided — the HERO of the scene`
+        ? `Smartphone held clearly facing camera — blurred/stylized app interface, NO readable text — the HERO of the scene`
         : "Product held clearly facing camera — same colors and shape as reference photos — the HERO of the scene",
     },
   };
@@ -1110,7 +1139,7 @@ function buildWojakGeminiParts(opts: {
 - ${cfg.product}`
       : "NO product in this scene";
 
-  const prompt = `
+  const prompt = appendNoTextRule(`
 REFERENCE IMAGE (first image): Study this character carefully.
 You must reproduce THE EXACT SAME face on the character you generate.
 
@@ -1141,8 +1170,7 @@ FORBIDDEN:
 - 3D render or Pixar style
 - Illustrated/cartoon background
 - Body cut at waist — must show full body
-- Any text or subtitles in the image
-`.trim();
+- Any text or subtitles in the image`);
 
   parts.push({ text: prompt });
   return parts;
@@ -1157,9 +1185,9 @@ function buildStoryImagePrompt(
 ): string {
   const productInHands = isApp
     ? `The character holds a modern smartphone facing the camera.
-       The phone screen shows the app interface clearly.
-       ${hasAppScreenshots ? "Reference screenshots provided above — reproduce the UI on the screen." : ""}
-       Screen is bright, UI is readable and prominent.`
+       The phone screen shows a blurred/out-of-focus stylized app interface — NOT readable text.
+       ${hasAppScreenshots ? "Reference screenshots provided above — use only as color/layout inspiration, NO readable text on screen." : ""}
+       Screen is bright but UI must remain unreadable.`
     : `The character holds the physical product in their hands.
        Product: ${productAnalysis}
        Product is clearly visible, facing camera, recognizable.
@@ -1167,7 +1195,7 @@ function buildStoryImagePrompt(
 
   const isSceneSolution = scene.role === "solution";
 
-  return `
+  return appendNoTextRule(`
 Create a Pixar/DreamWorks quality 3D CGI cinematic image — Fruit Drama style.
 
 MANDATORY FRUIT DRAMA STYLE:
@@ -1195,9 +1223,7 @@ Product is visible in the background or environment, not yet in hands.
 `
 }
 
-SUBTITLE: "${scene.subtitle || ""}" — simple bold white text at the bottom
-
-Vertical 9:16 format, cinematic composition`;
+Vertical 9:16 format, cinematic composition`);
 }
 
 function mouthHintForEmotion(emotion?: string): string {

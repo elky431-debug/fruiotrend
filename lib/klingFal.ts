@@ -75,6 +75,21 @@ STRICT ANATOMY RULES:
 - Smooth natural movement only — no morphing or body distortion
 - Keep the character appearance 100% consistent from start to finish`;
 
+export const ANTI_GHOST_PROMPT = `
+STRICT ANATOMY RULES — ENFORCED ON EVERY FRAME:
+- The character has EXACTLY TWO hands — no more, no less
+- When a hand or arm moves, the previous position must NOT leave a ghost/trace/residual hand
+- NO ghost limbs, NO duplicate hands, NO phantom arms
+- NO fading residual body parts from previous frames
+- If the character holds an object and moves it, the object moves cleanly with the hand
+- The hand holding the phone stays attached to the phone at ALL TIMES
+- NO third hand appearing anywhere in the frame
+- Check every frame: exactly 2 hands visible maximum`.trim();
+
+export function appendAntiGhostPrompt(prompt: string): string {
+  return `${prompt.trim()}\n\n${ANTI_GHOST_PROMPT}`;
+}
+
 export function enrichVideoPrompt(
   basePrompt: string,
   opts?: {
@@ -95,10 +110,8 @@ export function enrichVideoPrompt(
     ? ` The character speaks clearly in ${lang} (${voiceStyle} voice), dialogue: "${dialogue.slice(0, 180)}". Lip-synced mouth (${mouth}).`
     : ` Character speaks in ${lang} with ${voiceStyle} voice, mouth (${mouth}) animated as if talking.`;
   const anatomy = opts?.humanPresenter ? STRICT_HUMAN_ANATOMY_RULES : "";
-  return `${core}.${speechBlock} Cinematic Pixar 3D ad, 9:16 vertical, lip-sync mouth only.${anatomy}${VIDEO_CAMERA_AUDIO_RULES}`.slice(
-    0,
-    750
-  );
+  const body = `${core}.${speechBlock} Cinematic Pixar 3D ad, 9:16 vertical, lip-sync mouth only.${anatomy}${VIDEO_CAMERA_AUDIO_RULES}`;
+  return appendAntiGhostPrompt(body);
 }
 
 export function buildVideoInput(

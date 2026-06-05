@@ -4,6 +4,7 @@ import { usesHumanPresenter } from "@/lib/adTemplates";
 import type { AdTemplate } from "@/types/ad";
 import { buildWojakVideoPrompt } from "@/lib/wojakVideoPrompt";
 import {
+  appendAntiGhostPrompt,
   enrichVideoPrompt,
   mapVideoDurationSeconds,
   parseFalBillingError,
@@ -122,18 +123,20 @@ export async function POST(req: NextRequest) {
     const sceneDuration = mapVideoDurationSeconds(durationSeconds);
     const resolvedRole = String(narrativeRole || "problem");
 
-    const finalPrompt = isWojakStory
-      ? buildWojakVideoPrompt(resolvedRole, sceneDuration)
-      : humanPresenter
-        ? enrichVideoPrompt(basePrompt, {
-            mouthExpression,
-            ...audioOpts,
-          })
-        : `${basePrompt}${PRODUCT_INTEGRITY_RULES}${
-            voiceover
-              ? `\n\nVoiceover in French (${voiceStyle || "warm natural"}): "${String(voiceover).slice(0, 200)}". Lip-sync mouth: ${mouthExpression || "open mouth speaking"}.`
-              : ""
-          }${VIDEO_CAMERA_AUDIO_RULES}`;
+    const finalPrompt = humanPresenter
+      ? enrichVideoPrompt(basePrompt, {
+          mouthExpression,
+          ...audioOpts,
+        })
+      : appendAntiGhostPrompt(
+          isWojakStory
+            ? buildWojakVideoPrompt(resolvedRole, sceneDuration)
+            : `${basePrompt}${PRODUCT_INTEGRITY_RULES}${
+                voiceover
+                  ? `\n\nVoiceover in French (${voiceStyle || "warm natural"}): "${String(voiceover).slice(0, 200)}". Lip-sync mouth: ${mouthExpression || "open mouth speaking"}.`
+                  : ""
+              }${VIDEO_CAMERA_AUDIO_RULES}`
+        );
 
     const falRes = await fetch(VIDEO_QUEUE, {
       method: "POST",
