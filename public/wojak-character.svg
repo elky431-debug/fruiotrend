@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 500" width="200" height="500">
+  <ellipse cx="100" cy="320" rx="55" ry="80" fill="white" stroke="black" stroke-width="3"/>
+  <rect x="85" y="215" width="30" height="45" fill="white" stroke="black" stroke-width="2.5"/>
+  <path d="M45 290 Q40 260 55 250 Q70 245 85 255 L85 295 L55 295 Z" fill="white" stroke="black" stroke-width="2.5"/>
+  <path d="M155 290 Q160 260 145 250 Q130 245 115 255 L115 295 L145 295 Z" fill="white" stroke="black" stroke-width="2.5"/>
+  <path d="M45 290 Q30 340 40 390 Q50 420 60 420 Q70 420 72 390 Q68 340 75 295 Z" fill="white" stroke="black" stroke-width="2.5"/>
+  <ellipse cx="55" cy="425" rx="18" ry="14" fill="white" stroke="black" stroke-width="2"/>
+  <path d="M155 290 Q170 340 160 390 Q150 420 140 420 Q130 420 128 390 Q132 340 125 295 Z" fill="white" stroke="black" stroke-width="2.5"/>
+  <ellipse cx="145" cy="425" rx="18" ry="14" fill="white" stroke="black" stroke-width="2"/>
+  <rect x="65" y="395" width="30" height="90" fill="white" stroke="black" stroke-width="2.5"/>
+  <rect x="105" y="395" width="30" height="90" fill="white" stroke="black" stroke-width="2.5"/>
+  <ellipse cx="80" cy="490" rx="22" ry="12" fill="white" stroke="black" stroke-width="2"/>
+  <ellipse cx="120" cy="490" rx="22" ry="12" fill="white" stroke="black" stroke-width="2"/>
+  <ellipse cx="100" cy="140" rx="65" ry="80" fill="white" stroke="black" stroke-width="3"/>
+  <ellipse cx="35" cy="150" rx="12" ry="18" fill="white" stroke="black" stroke-width="2.5"/>
+  <ellipse cx="165" cy="150" rx="12" ry="18" fill="white" stroke="black" stroke-width="2.5"/>
+  <path d="M65 95 Q80 88 100 90" fill="none" stroke="black" stroke-width="2"/>
+  <path d="M68 105 Q82 98 105 100" fill="none" stroke="black" stroke-width="1.5"/>
+  <ellipse cx="75" cy="135" rx="12" ry="9" fill="white" stroke="black" stroke-width="2"/>
+  <ellipse cx="125" cy="135" rx="12" ry="9" fill="white" stroke="black" stroke-width="2"/>
+  <circle cx="77" cy="136" r="5" fill="#333"/>
+  <circle cx="127" cy="136" r="5" fill="#333"/>
+  <circle cx="79" cy="134" r="1.5" fill="white"/>
+  <circle cx="129" cy="134" r="1.5" fill="white"/>
+  <path d="M63 130 Q75 126 87 130" fill="none" stroke="black" stroke-width="2.5"/>
+  <path d="M113 130 Q125 126 137 130" fill="none" stroke="black" stroke-width="2.5"/>
+  <path d="M98 145 Q95 165 88 172 Q97 178 112 172 Q105 165 102 145" fill="white" stroke="black" stroke-width="2"/>
+  <path d="M80 195 Q100 188 120 195" fill="none" stroke="black" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M68 210 Q100 225 132 210" fill="none" stroke="black" stroke-width="1.5"/>
+</svg>

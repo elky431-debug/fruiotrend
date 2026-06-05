@@ -5,39 +5,53 @@ import {
   filterImageFiles,
   processProductImageFile,
 } from "@/lib/processProductImage";
-import type { ProductInput } from "@/types/ad";
+import type { InfluencerTraits, ProductInput } from "@/types/ad";
+import { fetchInfluencerTraitsFromUpload } from "../lib/analyzeInfluencerUpload";
+import {
+  IconSmartphone,
+  IconX,
+  IconUser,
+  IconBot,
+  IconCamera,
+  IconCheck,
+  IconClapperboard,
+  IconAlertTriangle,
+  IconClock,
+  IconArrowRight,
+  IconRefresh,
+} from "@/components/icons";
 
 const PRESET_SCRIPTS = [
   {
     id: "probleme-solution",
-    label: "🎯 Problème → Solution",
+    label: "Problème → Solution",
     example:
       '"Tu galères encore à faire ça manuellement ? Laisse-moi m\'en occuper."',
     structure: "Accroche douleur → l'appli résout tout → CTA",
   },
   {
     id: "chiffres",
-    label: "📊 Chiffres & Résultats",
+    label: "Chiffres & Résultats",
     example:
       '"En 30 secondes, je fais ce qui te prenait 2 heures. Essaie-moi."',
     structure: "Résultat concret → temps/argent gagné → CTA",
   },
   {
     id: "curiosite",
-    label: "🤯 Hook Curiosité",
+    label: "Hook Curiosité",
     example: '"Tu connais pas encore cette appli ? Tu rates quelque chose."',
     structure: "Accroche mystérieuse → révélation → urgence",
   },
   {
     id: "temoignage",
-    label: "⭐ Témoignage Utilisateur",
+    label: "Témoignage Utilisateur",
     example:
       '"Depuis que je l\'utilise, j\'ai économisé 300€ ce mois. C\'est réel."',
     structure: "Résultat personnel → avant/après → recommandation",
   },
   {
     id: "custom",
-    label: "✍️ Écrire mon propre script",
+    label: "Écrire mon propre script",
     example: null,
     structure: "Tu écris exactement ce que dit le personnage",
   },
@@ -97,6 +111,9 @@ export default function AppProductStep({ onNext, loading, initial }: Props) {
   const [influencerImage, setInfluencerImage] = useState<
     ProductInput["influencerImage"]
   >(appIsInitial ? initial?.influencerImage ?? null : null);
+  const [influencerTraits, setInfluencerTraits] = useState<
+    InfluencerTraits | null
+  >(appIsInitial ? initial?.influencerTraits ?? null : null);
   const [influencerBackgroundMode, setInfluencerBackgroundMode] = useState<
     "keep" | "change"
   >(appIsInitial ? initial?.influencerBackgroundMode ?? "change" : "change");
@@ -193,7 +210,24 @@ export default function AppProductStep({ onNext, loading, initial }: Props) {
     try {
       const { base64, mimeType, previewUrl } =
         await processProductImageFile(file);
-      setInfluencerImage({ base64, mimeType, url: previewUrl });
+      const asset = { base64, mimeType, url: previewUrl };
+      setInfluencerImage(asset);
+      setInfluencerTraits(null);
+
+      const traits = await fetchInfluencerTraitsFromUpload(asset);
+      if (traits) {
+        setInfluencerTraits(traits);
+        console.log(
+          "[APP] Traits influenceur:",
+          traits.gender,
+          traits.hairColor,
+          traits.skinTone
+        );
+      } else {
+        setInfluencerError(
+          "Photo ajoutée, mais l'analyse des traits a échoué — réessaie une photo plus nette."
+        );
+      }
     } catch (err) {
       setInfluencerError(
         err instanceof Error ? err.message : "Impossible d'ajouter la photo."
@@ -226,6 +260,8 @@ export default function AppProductStep({ onNext, loading, initial }: Props) {
       packagingImage: null,
       influencerMode,
       influencerImage: influencerMode === "photo" ? influencerImage ?? null : null,
+      influencerTraits:
+        influencerMode === "photo" ? influencerTraits ?? null : null,
       influencerBackgroundMode:
         influencerMode === "photo" ? influencerBackgroundMode : undefined,
       productType: "app",
@@ -254,7 +290,9 @@ export default function AppProductStep({ onNext, loading, initial }: Props) {
             marginBottom: 4,
           }}
         >
-          <span style={{ fontSize: 18 }}>📱</span>
+          <span style={{ display: "inline-flex", color: "var(--text2)" }}>
+            <IconSmartphone size={18} />
+          </span>
           <h3 style={{ color: "#fff", fontSize: 15, fontWeight: 600, margin: 0 }}>
             Screenshots de l&apos;appli
           </h3>
@@ -297,8 +335,15 @@ export default function AppProductStep({ onNext, loading, initial }: Props) {
             opacity: canAddScreenshots ? 1 : 0.65,
           }}
         >
-          <div style={{ fontSize: 24, marginBottom: 6 }}>
-            {uploading ? "⏳" : "📲"}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              color: "var(--accent-warm)",
+              marginBottom: 6,
+            }}
+          >
+            {uploading ? <IconRefresh size={24} /> : <IconSmartphone size={24} />}
           </div>
           <div style={{ color: "#fff", fontSize: 13, fontWeight: 600 }}>
             {uploading
@@ -365,11 +410,13 @@ export default function AppProductStep({ onNext, loading, initial }: Props) {
                     border: "none",
                     background: "#EF4444",
                     color: "#fff",
-                    fontSize: 9,
                     cursor: "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
                   }}
                 >
-                  ✕
+                  <IconX size={10} />
                 </button>
               </div>
             ))}
@@ -443,9 +490,17 @@ export default function AppProductStep({ onNext, loading, initial }: Props) {
         }}
       >
         <h3
-          style={{ color: "#fff", fontSize: 15, fontWeight: 600, marginBottom: 4 }}
+          style={{
+            color: "#fff",
+            fontSize: 15,
+            fontWeight: 600,
+            marginBottom: 4,
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 7,
+          }}
         >
-          🧑‍🎤 Personnage présentateur
+          <IconUser size={16} /> Personnage présentateur
         </h3>
         <p
           style={{
@@ -468,7 +523,10 @@ export default function AppProductStep({ onNext, loading, initial }: Props) {
             <button
               key={opt.mode}
               type="button"
-              onClick={() => setInfluencerMode(opt.mode)}
+              onClick={() => {
+                setInfluencerMode(opt.mode);
+                if (opt.mode === "ai") setInfluencerTraits(null);
+              }}
               style={{
                 flex: 1,
                 padding: "9px 12px",
@@ -516,7 +574,10 @@ export default function AppProductStep({ onNext, loading, initial }: Props) {
                 </p>
                 <button
                   type="button"
-                  onClick={() => setInfluencerImage(null)}
+                  onClick={() => {
+                    setInfluencerImage(null);
+                    setInfluencerTraits(null);
+                  }}
                   style={{
                     color: "#ff6666",
                     fontSize: 12,

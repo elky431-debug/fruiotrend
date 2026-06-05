@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireCredits, requireCreditsMulti } from "@/lib/apiCredits";
 import { usesHumanPresenter } from "@/lib/adTemplates";
 import type { AdTemplate } from "@/types/ad";
+import { buildWojakVideoPrompt } from "@/lib/wojakVideoPrompt";
 import {
   enrichVideoPrompt,
   mapVideoDurationSeconds,
@@ -59,15 +60,18 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const regenerate = Boolean((body as { regenerate?: boolean }).regenerate);
-    // Segment supplémentaire d'une scène longue (>20s) : seule la vidéo est
-    // facturée (voix + lip sync débités une seule fois par scène).
     const segmentExtra = Boolean((body as { segmentExtra?: boolean }).segmentExtra);
+    const storyTheme = (body as { storyTheme?: string }).storyTheme;
+    const theme = (body as { theme?: string }).theme;
+    const isWojakStory = storyTheme === "wojak" || theme === "wojak";
 
     const creditGuard = segmentExtra
       ? await requireCredits(req, "video")
       : regenerate
         ? await requireCredits(req, "video", { regenerate: true })
-        : await requireCreditsMulti(req, ["video", "voice", "lipsync"]);
+        : isWojakStory
+          ? await requireCreditsMulti(req, ["video", "voice"])
+          : await requireCreditsMulti(req, ["video", "voice", "lipsync"]);
     if (creditGuard instanceof NextResponse) return creditGuard;
 
     const {
@@ -79,6 +83,7 @@ export async function POST(req: NextRequest) {
       voiceover,
       voiceStyle,
       template,
+      narrativeRole,
     } = body;
     const apiKey = process.env.FAL_API_KEY;
 
@@ -114,16 +119,21 @@ export async function POST(req: NextRequest) {
       humanPresenter,
     };
 
-    const finalPrompt = humanPresenter
-      ? enrichVideoPrompt(basePrompt, {
-          mouthExpression,
-          ...audioOpts,
-        })
-      : `${basePrompt}${PRODUCT_INTEGRITY_RULES}${
-          voiceover
-            ? `\n\nVoiceover in French (${voiceStyle || "warm natural"}): "${String(voiceover).slice(0, 200)}". Lip-sync mouth: ${mouthExpression || "open mouth speaking"}.`
-            : ""
-        }${VIDEO_CAMERA_AUDIO_RULES}`;
+    const sceneDuration = mapVideoDurationSeconds(durationSeconds);
+    const resolvedRole = String(narrativeRole || "problem");
+
+    const finalPrompt = isWojakStory
+      ? buildWojakVideoPrompt(resolvedRole, sceneDuration)
+      : humanPresenter
+        ? enrichVideoPrompt(basePrompt, {
+            mouthExpression,
+            ...audioOpts,
+          })
+        : `${basePrompt}${PRODUCT_INTEGRITY_RULES}${
+            voiceover
+              ? `\n\nVoiceover in French (${voiceStyle || "warm natural"}): "${String(voiceover).slice(0, 200)}". Lip-sync mouth: ${mouthExpression || "open mouth speaking"}.`
+              : ""
+          }${VIDEO_CAMERA_AUDIO_RULES}`;
 
     const falRes = await fetch(VIDEO_QUEUE, {
       method: "POST",

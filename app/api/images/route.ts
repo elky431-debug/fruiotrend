@@ -1,3 +1,5 @@
+import fs from "fs";
+import path from "path";
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import {
@@ -12,13 +14,19 @@ import {
 } from "@/lib/inferBackground";
 import { requireCredits } from "@/lib/apiCredits";
 import { analyzeProductImages } from "@/lib/productAnalysis";
+import {
+  analyzeInfluencerPhoto,
+  buildInfluencerTraitsConstraintBlock,
+  validateAndLogInfluencerTraits,
+  type InfluencerTraits,
+} from "@/lib/influencerAnalysis";
 
 export const maxDuration = 120;
 
-const DEFAULT_IMAGE_MODEL = "gemini-2.5-flash-image";
+const DEFAULT_IMAGE_MODEL = "gemini-2.5-flash-image-preview";
 const FALLBACK_IMAGE_MODELS = [
+  "gemini-2.5-flash-image",
   "gemini-3.1-flash-image-preview",
-  "gemini-2.5-flash-image-preview",
 ];
 
 type ProductImageInput =
@@ -66,10 +74,12 @@ export async function POST(req: NextRequest) {
     const {
       scene,
       productDescription,
+      productName,
       productAnalysis: cachedAnalysis,
       productImages,
       packagingImage,
       influencerImage,
+      influencerTraits: cachedInfluencerTraits,
       influencerMode,
       influencerBackgroundMode,
       template,
@@ -77,13 +87,25 @@ export async function POST(req: NextRequest) {
       sceneIndex,
       totalScenes,
       productType,
+      storyTheme,
+      theme,
+      storyMode,
+      wojakCharacterId,
+      wojak_profile,
+      characterImageBase64,
+      characterMimeType,
     } = body as {
-      scene?: SceneInput;
+      scene?: SceneInput & {
+        role?: string;
+        subtitle_color?: string;
+      };
       productDescription?: string;
+      productName?: string;
       productAnalysis?: string;
       productImages?: ProductImageInput[];
       packagingImage?: PackagingImageInput;
       influencerImage?: InfluencerImageInput;
+      influencerTraits?: InfluencerTraits | null;
       influencerMode?: "ai" | "photo";
       influencerBackgroundMode?: "keep" | "change";
       template?: string;
@@ -91,6 +113,13 @@ export async function POST(req: NextRequest) {
       sceneIndex?: number;
       totalScenes?: number;
       productType?: "product" | "app";
+      storyTheme?: string;
+      theme?: string;
+      storyMode?: boolean;
+      wojakCharacterId?: string;
+      wojak_profile?: string;
+      characterImageBase64?: string;
+      characterMimeType?: string;
     };
 
     console.log(
@@ -132,7 +161,131 @@ export async function POST(req: NextRequest) {
     const keepInfluencerBackground =
       hasInfluencerImage && influencerBackgroundMode === "keep";
 
+    let influencerTraits: InfluencerTraits | null =
+      cachedInfluencerTraits ?? null;
+
+    if (hasInfluencerImage) {
+      if (influencerTraits) {
+        validateAndLogInfluencerTraits(influencerTraits);
+      } else {
+        influencerTraits = await analyzeInfluencerPhoto(influencerImage);
+        if (!influencerTraits) {
+          console.warn(
+            "[IMAGES] Traits influenceur non extraits — génération avec photo seule"
+          );
+        }
+      }
+    }
+
     const isApp = productType === "app";
+    const resolvedStoryTheme =
+      storyTheme || theme || (storyMode ? "wojak" : undefined);
+
+    if (resolvedStoryTheme === "wojak") {
+      const storyScene = scene || {};
+      const sceneRole = resolveStorySceneRole(storyScene);
+      const resolvedProductName =
+        productName?.trim() || description.split(/[—–-]/)[0]?.trim() || "product";
+
+      const parts = buildWojakGeminiParts({
+        scene: storyScene,
+        sceneRole,
+        productImages: normalizedImages,
+        isApp,
+        productName: resolvedProductName,
+      });
+
+      const primaryModel =
+        process.env.GEMINI_IMAGE_MODEL || DEFAULT_IMAGE_MODEL;
+      const models = [
+        primaryModel,
+        ...FALLBACK_IMAGE_MODELS.filter((m) => m !== primaryModel),
+      ];
+
+      const errors: string[] = [];
+      for (const modelName of models) {
+        try {
+          console.log(
+            "[IMAGES] Wojak corps complet — modèle:",
+            modelName,
+            "| acte:",
+            sceneRole
+          );
+          const result = await generateImage(modelName, parts, {
+            temperature: 0.3,
+            topP: 0.8,
+          });
+          if (result) {
+            return NextResponse.json({ ...result, model: modelName });
+          }
+          errors.push(`${modelName}: pas d'image`);
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          errors.push(`${modelName}: ${msg.slice(0, 200)}`);
+        }
+      }
+
+      return NextResponse.json(
+        {
+          error:
+            "Génération visuelle Wojak indisponible. " + errors.join(" | "),
+        },
+        { status: 500 }
+      );
+    }
+
+    if (resolvedStoryTheme === "fruit-drama") {
+      const storyAnalysis =
+        cachedAnalysis?.trim() ||
+        (isApp
+          ? description
+          : await analyzeProductImages(normalizedImages, description));
+
+      const imagePrompt = buildStoryImagePrompt(
+        scene || {},
+        "fruit-drama",
+        storyAnalysis || description,
+        isApp,
+        normalizedImages.length > 0
+      );
+
+      const parts = buildContentParts(
+        normalizedImages,
+        imagePrompt,
+        packagingImage,
+        null
+      );
+
+      const primaryModel =
+        process.env.GEMINI_IMAGE_MODEL || DEFAULT_IMAGE_MODEL;
+      const models = [
+        primaryModel,
+        ...FALLBACK_IMAGE_MODELS.filter((m) => m !== primaryModel),
+      ];
+
+      const errors: string[] = [];
+      for (const modelName of models) {
+        try {
+          console.log("[IMAGES] Story — modèle:", modelName, resolvedStoryTheme);
+          const result = await generateImage(modelName, parts);
+          if (result) {
+            return NextResponse.json({ ...result, model: modelName });
+          }
+          errors.push(`${modelName}: pas d'image`);
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          errors.push(`${modelName}: ${msg.slice(0, 200)}`);
+        }
+      }
+
+      return NextResponse.json(
+        {
+          error:
+            "Génération visuelle History Ads indisponible. " + errors.join(" | "),
+        },
+        { status: 500 }
+      );
+    }
 
     const imagePrompt = isApp
       ? buildAppImagePrompt(
@@ -140,7 +293,12 @@ export async function POST(req: NextRequest) {
           description,
           normalizedImages.length > 0,
           hasInfluencerImage
-            ? buildInfluencerInstruction("photo", true, keepInfluencerBackground)
+            ? buildInfluencerInstruction(
+                "photo",
+                true,
+                keepInfluencerBackground,
+                influencerTraits
+              )
             : "",
           keepInfluencerBackground
         )
@@ -155,7 +313,8 @@ export async function POST(req: NextRequest) {
             ? buildInfluencerInstruction(
                 influencerMode,
                 hasInfluencerImage,
-                keepInfluencerBackground
+                keepInfluencerBackground,
+                influencerTraits
               )
             : "",
           keepInfluencerBackground
@@ -201,19 +360,25 @@ export async function POST(req: NextRequest) {
     let attempt = await tryModels(parts);
 
     // Filet de sécurité : si la photo influenceur a fait refuser tous les
-    // modèles, on régénère un personnage générique (sans la photo) pour ne
-    // jamais bloquer l'utilisateur.
-    if (!attempt && hasInfluencerImage) {
+    // modèles, on réessaie avec les traits extraits (sans la photo) pour garder
+    // la même identité — jamais un personnage aléatoire par défaut.
+    if (!attempt && hasInfluencerImage && influencerTraits) {
       console.warn(
-        "[IMAGES] Refus avec photo influenceur — fallback personnage générique"
+        "[IMAGES] Refus avec photo influenceur — retry avec traits verrouillés"
+      );
+      const traitsOnlyInstruction = buildInfluencerInstruction(
+        "photo",
+        false,
+        keepInfluencerBackground,
+        influencerTraits
       );
       const fallbackPrompt = isApp
         ? buildAppImagePrompt(
             scene || {},
             description,
             normalizedImages.length > 0,
-            "",
-            false
+            traitsOnlyInstruction,
+            keepInfluencerBackground
           )
         : buildImagePrompt(
             scene || {},
@@ -222,10 +387,8 @@ export async function POST(req: NextRequest) {
             productAnalysis,
             targetAudience,
             Boolean(packagingImage?.base64),
-            templateKey === "influenceur"
-              ? buildInfluencerInstruction("ai", false)
-              : "",
-            false
+            templateKey === "influenceur" ? traitsOnlyInstruction : "",
+            keepInfluencerBackground
           );
       const fallbackParts = buildContentParts(
         normalizedImages,
@@ -339,46 +502,56 @@ function buildContentParts(
 function buildInfluencerInstruction(
   influencerMode: "ai" | "photo" | undefined,
   hasInfluencerImage: boolean,
-  keepBackground = false
+  keepBackground = false,
+  traits: InfluencerTraits | null = null
 ): string {
-  if (influencerMode === "photo" && hasInfluencerImage) {
+  const usePhotoReference = influencerMode === "photo" && (hasInfluencerImage || traits);
+
+  if (usePhotoReference) {
     const backgroundLine = keepBackground
       ? "BACKGROUND: keep the EXACT same setting / room / decor / lighting as the reference image, re-rendered in Pixar 3D CGI style. Do NOT invent a new environment."
       : "BACKGROUND: place the character in the scene environment described below, fully rendered in Pixar 3D CGI (modern lifestyle, warm lighting, bokeh).";
+
+    const traitsBlock = traits
+      ? buildInfluencerTraitsConstraintBlock(traits)
+      : "";
+
+    const referenceLine = hasInfluencerImage
+      ? "The FIRST reference image above is the uploaded character photo — analyze it and match every trait listed below."
+      : "No reference image attached — use ONLY the locked traits below (extracted from the user's upload).";
+
     return `
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 THIS IS NOT A PHOTO — THIS IS A PIXAR 3D CGI ANIMATION
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-The reference image above shows a person.
-Transform this person into an ORIGINAL Pixar/DreamWorks 3D CGI animated
-character. The output MUST look like a frame from a Pixar movie — NOT a photo.
+${referenceLine}
+Transform this person/character into an ORIGINAL Pixar/DreamWorks 3D CGI
+animated character. The output MUST look like a frame from a Pixar movie — NOT a photo.
+The character MUST be recognizably derived from the uploaded reference.
 
-TRANSFORMATION RULES:
-1. STYLE: Full Pixar 3D CGI render — smooth glossy skin, subsurface scattering, cartoon proportions
-2. EYES: Make the eyes significantly larger and more expressive (Pixar style)
-3. SKIN: Keep the same skin tone but render it in smooth Pixar 3D texture
-4. HAIR: Keep the same hair color, length and style — rendered in Pixar 3D
-5. FACE: Keep the facial features but stylize them — rounder, softer, more expressive
-6. OUTFIT: Keep the same clothing colors and style, rendered in Pixar 3D
-7. ACCESSORIES: Keep all jewelry, hats and accessories — rendered in Pixar 3D
+${traitsBlock}
+
+TRANSFORMATION RULES (Pixar stylization ON TOP of locked identity):
+1. STYLE: Full Pixar 3D CGI render — smooth glossy skin, subsurface scattering
+2. EYES: Larger and more expressive (Pixar style) — but same eye color/spacing as reference
+3. SKIN: EXACT same skin tone as locked traits — Pixar 3D texture only
+4. HAIR: EXACT same color, length, style as locked traits — Pixar 3D hair
+5. FACE: Same face structure as reference — stylize softly, do NOT replace with a different face
+6. OUTFIT: Same clothing colors and style as reference
+7. ACCESSORIES: Keep all jewelry, hats, glasses — Pixar 3D
 
 WHAT THE CHARACTER DOES:
-- Holds the item being promoted (product or a smartphone showing the app), to camera
+- Holds the item being promoted (product or smartphone showing the app), to camera
 - Direct eye contact with viewer — TikTok/UGC energy
-- Enthusiastic, friendly expression
-
-THIS IS MANDATORY:
-- The output is a 3D Pixar CGI image — NOT a photo
-- NOT realistic — NOT photorealistic — PIXAR ANIMATED
-- Think: how would Pixar animate this kind of character in their movie?
+- Expression: ${traits?.expression || "enthusiastic, friendly"}
 
 FORBIDDEN:
+❌ Generating a random default character unrelated to the upload
 ❌ Outputting a realistic photo or photo-realistic render
-❌ Keeping the reference image as-is or only lightly filtered
-❌ Changing the skin tone
-❌ Removing accessories or distinctive features
-❌ Flat 2D drawing or anime — it MUST be 3D CGI Pixar style
+❌ Changing gender, hair color, hair style, or skin tone
+❌ Inventing a different face or body type
+❌ Flat 2D drawing — MUST be 3D CGI Pixar style
 
 ${backgroundLine}
 VERTICAL 9:16 portrait format.
@@ -396,7 +569,8 @@ Looks directly at the viewer — TikTok/UGC energy.`;
 
 async function generateImage(
   modelName: string,
-  parts: ContentPart[]
+  parts: ContentPart[],
+  options?: { temperature?: number; topP?: number }
 ): Promise<{ imageBase64: string; mimeType: string; imageUrl: string } | null> {
   const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
   const model = genAI.getGenerativeModel({ model: modelName });
@@ -405,7 +579,8 @@ async function generateImage(
     contents: [{ role: "user", parts }],
     generationConfig: {
       responseModalities: ["IMAGE", "TEXT"],
-      temperature: 1.0,
+      temperature: options?.temperature ?? 1.0,
+      ...(options?.topP != null ? { topP: options.topP } : {}),
       imageConfig: { aspectRatio: "9:16" },
     } as never,
   });
@@ -638,7 +813,7 @@ Setting: ${background}
 ━━━ CHARACTER ━━━
 ${
   hasInfluencerPhoto
-    ? "- An ORIGINAL 3D PIXAR CARTOON presenter (NOT photorealistic, NOT a photo), using the FIRST reference image only as art-direction inspiration for the general look (hair color/style, skin tone, outfit colors). Big exaggerated Pixar eyes, smooth glossy 3D CGI skin. A fictional animated mascot, not a real person."
+    ? "- An ORIGINAL 3D PIXAR CARTOON presenter derived from the uploaded reference — SAME gender, hair, face structure, skin tone (see HARD CONSTRAINTS above). Big exaggerated Pixar eyes, smooth glossy 3D CGI skin. NOT a random character."
     : "- Stylized 3D Pixar human character with big cartoon eyes and glossy CGI skin"
 }
 - Holds a smartphone in both hands (or one hand), facing camera
@@ -659,6 +834,270 @@ ${
 
 ━━━ FORMAT ━━━
 Vertical 9:16 — character and smartphone clearly framed, cinematic lighting.`;
+}
+
+type StorySceneInput = {
+  id?: number;
+  role?: string;
+  narrative_role?: string;
+  show_product?: boolean;
+  character_pose?: string;
+  subtitle?: string;
+  subtitle_color?: string;
+  visual_description?: string;
+  background?: string;
+};
+
+const WOJAK_STYLE_REF = "gym_wojak.png";
+
+const WOJAK_FACE_DESCRIPTION = `
+FACE — COPY EXACTLY FROM THE REFERENCE IMAGE:
+The face must be pixel-perfect identical to the reference:
+- Completely BALD head — no hair at all
+- Skin color: off-white / very light grey — like unpainted plaster
+- Head shape: slightly elongated oval, rounded top
+- Eyes: TWO small, simple, droopy eyes — heavy eyelids, looking slightly downward
+  Each eye is just a small curved line with a tiny iris dot — NOT big anime eyes
+- Eyebrows: thin, slightly furrowed, angled inward — giving a tired/sad expression
+- Nose: a simple small bump or two tiny dots — minimalist
+- Mouth: a straight thin line, slightly downturned at corners — neutral or sad
+- Chin: slightly pronounced, rounded
+- Neck: short and thick
+- No shading on face — flat white/grey fill with simple black outlines only
+- The face looks like it was drawn in MS Paint or with a basic pencil sketch
+- Style reference: the "Wojak" / "NPC" internet meme face — NOT anime, NOT manga, NOT Pixar
+- Do NOT draw big eyes, do NOT draw detailed facial features, do NOT add hair
+`.trim();
+
+type WojakActConfig = {
+  outfit: string;
+  pose: string;
+  background: string;
+  product: string;
+};
+
+function resolveStorySceneRole(scene: StorySceneInput): string {
+  const role = scene.role || scene.narrative_role || "problem";
+  if (role === "solution") return "solution";
+  if (role === "discovery") return "discovery";
+  return "problem";
+}
+
+function resolveSceneActId(scene: StorySceneInput, sceneRole: string): number {
+  if (typeof scene.id === "number" && scene.id >= 1 && scene.id <= 3) {
+    return scene.id;
+  }
+  if (sceneRole === "solution") return 3;
+  if (sceneRole === "discovery") return 2;
+  return 1;
+}
+
+function buildWojakActConfig(
+  scene: StorySceneInput,
+  sceneRole: string,
+  isApp: boolean,
+  productName: string
+): WojakActConfig {
+  const envBase =
+    scene.visual_description ||
+    scene.background ||
+    "realistic indoor room";
+
+  const poseOverride = scene.character_pose?.trim();
+
+  const actConfigs: Record<string, WojakActConfig> = {
+    problem: {
+      outfit: "oversized black hoodie, grey sweatpants",
+      pose:
+        poseOverride ||
+        "standing hunched, shoulders slumped, hands in pocket, head slightly down",
+      background: `${envBase}, dark cold blue/grey lighting, cluttered messy space, shadows`,
+      product: "NO product in this scene",
+    },
+    discovery: {
+      outfit: "same black hoodie, casual",
+      pose:
+        poseOverride ||
+        "sitting on couch edge, leaning forward, holding phone in one hand, looking at it with curiosity",
+      background: `${envBase}, neutral evening light, warm lamp glow starting`,
+      product: "NO product — only phone in hand",
+    },
+    solution: {
+      outfit: "clean white t-shirt or light grey hoodie, standing tall",
+      pose:
+        poseOverride ||
+        (isApp
+          ? "standing straight and confident, holding smartphone with both hands facing camera at chest height"
+          : "standing straight and confident, holding the product with both hands facing camera at chest height"),
+      background: `${envBase}, warm golden light, bright clean organized space`,
+      product: isApp
+        ? `Smartphone showing "${productName}" app UI held clearly facing camera — reference screenshots provided — the HERO of the scene`
+        : "Product held clearly facing camera — same colors and shape as reference photos — the HERO of the scene",
+    },
+  };
+
+  return actConfigs[sceneRole] || actConfigs.problem;
+}
+
+function loadWojakStyleRefBase64(): string {
+  const styleRefPath = path.join(
+    process.cwd(),
+    "public",
+    "wojak",
+    WOJAK_STYLE_REF
+  );
+  if (!fs.existsSync(styleRefPath)) {
+    throw new Error(
+      `Référence Wojak introuvable: public/wojak/${WOJAK_STYLE_REF}`
+    );
+  }
+  return fs.readFileSync(styleRefPath).toString("base64");
+}
+
+function buildWojakGeminiParts(opts: {
+  scene: StorySceneInput;
+  sceneRole: string;
+  productImages: { base64: string; mimeType: string }[];
+  isApp: boolean;
+  productName: string;
+}): ContentPart[] {
+  const actId = resolveSceneActId(opts.scene, opts.sceneRole);
+  const cfg = buildWojakActConfig(
+    opts.scene,
+    opts.sceneRole,
+    opts.isApp,
+    opts.productName
+  );
+
+  const wojakRefBase64 = loadWojakStyleRefBase64();
+  console.log(
+    "[IMAGES] Wojak — référence style réinjectée acte",
+    actId,
+    ":",
+    WOJAK_STYLE_REF
+  );
+
+  const parts: ContentPart[] = [
+    {
+      inlineData: {
+        mimeType: "image/png",
+        data: wojakRefBase64,
+      },
+    },
+  ];
+
+  if (opts.sceneRole === "solution" && opts.productImages.length > 0) {
+    for (const img of opts.productImages.slice(0, 2)) {
+      parts.push({
+        inlineData: {
+          mimeType: img.mimeType || "image/jpeg",
+          data: img.base64,
+        },
+      });
+    }
+    console.log(
+      "[IMAGES] Wojak acte 3 —",
+      Math.min(opts.productImages.length, 2),
+      "photo(s) produit en référence"
+    );
+  }
+
+  const productBlock =
+    opts.sceneRole === "solution"
+      ? `PRODUCT:
+- Character holds the product with both hands, facing camera
+- Product clearly visible at chest height
+- ${cfg.product}`
+      : "NO product in this scene";
+
+  const prompt = `
+REFERENCE IMAGE (first image): Study this character carefully.
+You must reproduce THE EXACT SAME face on the character you generate.
+
+${WOJAK_FACE_DESCRIPTION}
+
+BODY — same style as reference:
+- Full body visible head to toe
+- Flat 2D illustration style with simple black outlines
+- White/light grey skin on body
+- Simple flat clothing — no gradients, no textures
+- Character height: 65-75% of image
+
+THIS SCENE — ACT ${actId}:
+- Outfit: ${cfg.outfit}
+- Pose: ${cfg.pose}
+
+BACKGROUND:
+- ${cfg.background}
+- PHOTORÉALISTIC — like a real photograph
+- Strong contrast between sketch character and real photo background
+
+${productBlock}
+
+FORBIDDEN:
+- Big anime/manga eyes
+- Hair on the head
+- Realistic human face
+- 3D render or Pixar style
+- Illustrated/cartoon background
+- Body cut at waist — must show full body
+- Any text or subtitles in the image
+`.trim();
+
+  parts.push({ text: prompt });
+  return parts;
+}
+
+function buildStoryImagePrompt(
+  scene: StorySceneInput,
+  theme: string,
+  productAnalysis: string,
+  isApp: boolean,
+  hasAppScreenshots: boolean
+): string {
+  const productInHands = isApp
+    ? `The character holds a modern smartphone facing the camera.
+       The phone screen shows the app interface clearly.
+       ${hasAppScreenshots ? "Reference screenshots provided above — reproduce the UI on the screen." : ""}
+       Screen is bright, UI is readable and prominent.`
+    : `The character holds the physical product in their hands.
+       Product: ${productAnalysis}
+       Product is clearly visible, facing camera, recognizable.
+       Same colors, shape, and details as the reference photos.`;
+
+  const isSceneSolution = scene.role === "solution";
+
+  return `
+Create a Pixar/DreamWorks quality 3D CGI cinematic image — Fruit Drama style.
+
+MANDATORY FRUIT DRAMA STYLE:
+- Characters have FRUIT HEADS on full realistic HUMAN BODIES
+- Fruit heads: large Pixar expressive eyes, detailed fruit texture
+- Bodies: human proportions, detailed realistic clothing
+- Background: PHOTORÉALISTIC cinematic environment
+- Lighting: dramatic, moody, cinematic — like a movie still
+- Quality: Pixar "Coco" / "Ratatouille" level
+
+SCENE: ${scene.visual_description || ""}
+BACKGROUND: ${scene.background || ""}
+
+${
+  isSceneSolution
+    ? `
+PRODUCT/APP IN SCENE (MANDATORY):
+${productInHands}
+The fruit character holds this in their hands — clearly visible, facing camera.
+This is the SOLUTION scene — the product/app is the hero of this frame.
+`
+    : `
+This is the SETUP scene — dramatic tension between characters.
+Product is visible in the background or environment, not yet in hands.
+`
+}
+
+SUBTITLE: "${scene.subtitle || ""}" — simple bold white text at the bottom
+
+Vertical 9:16 format, cinematic composition`;
 }
 
 function mouthHintForEmotion(emotion?: string): string {

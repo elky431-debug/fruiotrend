@@ -1,6 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import {
+  createContext,
+  createElement,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react";
 import { authFetch } from "@/lib/authFetch";
 
 export type CreditsState = {
@@ -11,11 +19,9 @@ export type CreditsState = {
   refresh: () => void;
 };
 
-/**
- * Crédits + plan de l'utilisateur, via /api/credits (qui gère le fallback dev).
- * Se rafraîchit sur l'événement "credits-updated" et toutes les `pollMs` ms.
- */
-export function useCredits(pollMs = 30000): CreditsState {
+const CreditsContext = createContext<CreditsState | null>(null);
+
+function useCreditsInternal(pollMs = 30000): CreditsState {
   const [credits, setCredits] = useState<number | null>(null);
   const [plan, setPlan] = useState<string | null>(null);
   const [hasPlan, setHasPlan] = useState(false);
@@ -48,4 +54,19 @@ export function useCredits(pollMs = 30000): CreditsState {
   }, [load, pollMs]);
 
   return { credits, plan, hasPlan, loading, refresh: load };
+}
+
+export function CreditsProvider({ children }: { children: ReactNode }) {
+  const value = useCreditsInternal();
+  return createElement(CreditsContext.Provider, { value }, children);
+}
+
+/**
+ * Crédits + plan de l'utilisateur, via /api/credits (qui gère le fallback dev).
+ * Une seule requête partagée dans l'app grâce à CreditsProvider.
+ */
+export function useCredits(): CreditsState {
+  const ctx = useContext(CreditsContext);
+  if (ctx) return ctx;
+  return useCreditsInternal();
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { VOICE_OPTIONS, type VoiceOption } from "@/lib/voices";
+import { IconMic, IconPlay, IconCheck } from "@/components/icons";
 
 interface VoiceSelectorProps {
   selectedVoice: string;
@@ -107,18 +108,21 @@ export default function VoiceSelector({
     >
       <h3
         style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
           color: "var(--text)",
           fontSize: 14,
           fontWeight: 600,
           marginBottom: 4,
         }}
       >
-        🎙️ Voix PubMoi
+        <IconMic size={16} /> Voix PubMoi
       </h3>
       <p style={{ color: "var(--text2)", fontSize: 12, marginBottom: 12 }}>
         {voicesLoading
           ? "Chargement…"
-          : `${voices.length} voix — clique ▶ pour écouter un aperçu`}
+          : `${voices.length} voix — clique sur lecture pour écouter un aperçu`}
       </p>
 
       <input
@@ -202,11 +206,13 @@ export default function VoiceSelector({
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  fontSize: 16,
+                  fontSize: 13,
+                  fontWeight: 700,
+                  color: "var(--text2)",
                   flexShrink: 0,
                 }}
               >
-                {voice.emoji}
+                {voice.name?.charAt(0).toUpperCase() || "V"}
               </div>
 
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -248,16 +254,25 @@ export default function VoiceSelector({
                   border: "1px solid var(--border)",
                   background: "var(--bg4)",
                   color: "var(--text)",
-                  fontSize: 11,
                   cursor: previewLoading ? "wait" : "pointer",
                   flexShrink: 0,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
                 }}
               >
-                {isPreviewing ? "…" : "▶"}
+                {isPreviewing ? "…" : <IconPlay size={12} />}
               </button>
 
               {isSelected && (
-                <span style={{ color: "var(--accent-warm)", fontSize: 14 }}>✓</span>
+                <span
+                  style={{
+                    color: "var(--accent-warm)",
+                    display: "inline-flex",
+                  }}
+                >
+                  <IconCheck size={15} />
+                </span>
               )}
             </div>
           );

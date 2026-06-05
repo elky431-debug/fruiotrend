@@ -7,6 +7,8 @@ const jakarta = Plus_Jakarta_Sans({
   weight: ["400", "500", "600", "700", "800"],
   variable: "--font-jakarta",
   display: "swap",
+  preload: true,
+  adjustFontFallback: false,
 });
 
 export const viewport: Viewport = {
@@ -35,8 +37,8 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="fr" className={jakarta.variable}>
-      <body className={jakarta.className}>{children}</body>
+    <html lang="fr" className={`${jakarta.variable} ${jakarta.className}`}>
+      <body>{children}</body>
     </html>
   );
 }

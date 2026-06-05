@@ -11,6 +11,16 @@ import {
 } from "@/lib/voices";
 import type { AdScript, ProductInput } from "@/types/ad";
 import VoiceSelector from "./VoiceSelector";
+import {
+  IconClapperboard,
+  IconLayers,
+  IconSparkles,
+  IconFilm,
+  IconAlertTriangle,
+  IconCheckCircle,
+  IconDownload,
+  IconRefresh,
+} from "@/components/icons";
 
 interface Props {
   product: ProductInput;
@@ -108,7 +118,13 @@ async function generateOneClip(
   imageBase64: string | null,
   durationSeconds: number,
   sc: ScenePromptFallbacks,
-  audioOpts?: { voiceover: string; voiceStyle: string; template?: string },
+  audioOpts?: {
+    voiceover: string;
+    voiceStyle: string;
+    template?: string;
+    storyTheme?: string;
+    narrativeRole?: string;
+  },
   segmentExtra = false,
   onPoll?: (pct: number) => void
 ): Promise<string> {
@@ -124,6 +140,9 @@ async function generateOneClip(
       voiceover: audioOpts?.voiceover,
       voiceStyle: audioOpts?.voiceStyle,
       template: audioOpts?.template,
+      storyTheme: audioOpts?.storyTheme,
+      theme: audioOpts?.storyTheme,
+      narrativeRole: audioOpts?.narrativeRole || sc.narrative_role,
       segmentExtra,
     }),
   });
@@ -187,7 +206,13 @@ async function generateSceneVideoFast(
   imageUrl: string | null,
   imageBase64: string | null,
   durationSeconds?: number,
-  audioOpts?: { voiceover: string; voiceStyle: string; template?: string },
+  audioOpts?: {
+    voiceover: string;
+    voiceStyle: string;
+    template?: string;
+    storyTheme?: string;
+    narrativeRole?: string;
+  },
   callbacks?: {
     onStart?: () => void;
     onPoll?: (progressPct: number) => void;
@@ -291,10 +316,17 @@ export default function Step4Video({
   const [userCredits, setUserCredits] = useState<number | null>(null);
 
   const isAppAd = product.productType === "app";
+  const isWojakStory = product.storyTheme === "wojak";
 
   useEffect(() => {
     selectedVoiceRef.current = selectedVoice;
   }, [selectedVoice]);
+
+  useEffect(() => {
+    if (product.storyTheme === "wojak" && selectedVoice === "eve") {
+      setSelectedVoice("rex");
+    }
+  }, [product.storyTheme, selectedVoice]);
 
   const scenes = useMemo(
     () => getActiveScenes(product, script),
@@ -307,7 +339,9 @@ export default function Step4Video({
 
   const nScenes = scenes.length;
   const costPerScene =
-    CREDIT_COSTS.video + CREDIT_COSTS.voice + CREDIT_COSTS.lipsync;
+    CREDIT_COSTS.video +
+    CREDIT_COSTS.voice +
+    (isAppAd || isWojakStory ? 0 : CREDIT_COSTS.lipsync);
   // Segments vidéo supplémentaires pour les scènes > 20s (LTX plafonne à 20s).
   const extraSegments = scenes.reduce(
     (sum, sc) =>
@@ -337,6 +371,9 @@ export default function Step4Video({
     console.log("[STEP4] Voix utilisée (ref):", activeVoice, "| state:", selectedVoice);
     if (isAppAd) {
       console.log("[STEP4] Pub appli — ElevenLabs prioritaire, pas de lip sync fal");
+    }
+    if (isWojakStory) {
+      console.log("[STEP4] History Ads Wojak — narrateur externe, pas de lip sync");
     }
 
     setStep("animating");
@@ -391,6 +428,8 @@ export default function Step4Video({
             voiceover: sc.voiceover.trim(),
             voiceStyle,
             template: product.template,
+            storyTheme: product.storyTheme,
+            narrativeRole: sc.narrative_role,
           },
           {
             onStart: () => {
@@ -428,10 +467,13 @@ export default function Step4Video({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             text: sc.voiceover.trim(),
-            voiceName: activeVoice,
+            voiceName:
+              product.storyTheme === "wojak" ? activeVoice || "rex" : activeVoice,
             emotion: sc.emotion,
             narrativeRole: sc.narrative_role,
             productType: product.productType || "product",
+            storyTheme: product.storyTheme,
+            theme: product.storyTheme,
           }),
         });
         const voiceData = await voiceRes.json().catch(() => ({}));
@@ -450,48 +492,46 @@ export default function Step4Video({
           activeVoice
         );
 
-        // Lip sync réel : on envoie la vidéo muette + la voix au modèle
-        // sync-lipsync qui ré-anime la bouche pour qu'elle dise exactement le
-        // mot au bon moment. La vidéo renvoyée contient déjà la voix calée
-        // (audio embarqué). En cas d'échec, le serveur retombe sur un mux et
-        // renvoie quand même une vidéo + voix.
-        setProgressLabel(
-          `Scène ${sc.number}/${total} — synchronisation labiale...`
-        );
-
+        // Wojak : narrateur externe uniquement — pas de lip sync
         let syncedVideoUrl: string | null = null;
-        try {
-          const lipRes = await authFetch("/api/lipsync", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              videoUrl: video.videoUrl,
-              audioBase64: voiceData.audioBase64,
-              productType: product.productType || "product",
-              template: product.template,
-              prepaid: true,
-            }),
-          });
-          const lipData = await lipRes.json().catch(() => ({}));
-          if (lipRes.ok && lipData.videoUrl) {
-            syncedVideoUrl = lipData.videoUrl as string;
-            console.log(
-              `[STEP4] Scène ${sc.number} — lip sync:`,
-              lipData.mode,
-              "| appliqué:",
-              lipData.lipsyncApplied
-            );
-          } else {
+        if (!isWojakStory && !isAppAd) {
+          setProgressLabel(
+            `Scène ${sc.number}/${total} — synchronisation labiale...`
+          );
+
+          try {
+            const lipRes = await authFetch("/api/lipsync", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                videoUrl: video.videoUrl,
+                audioBase64: voiceData.audioBase64,
+                productType: product.productType || "product",
+                template: product.template,
+                prepaid: true,
+              }),
+            });
+            const lipData = await lipRes.json().catch(() => ({}));
+            if (lipRes.ok && lipData.videoUrl) {
+              syncedVideoUrl = lipData.videoUrl as string;
+              console.log(
+                `[STEP4] Scène ${sc.number} — lip sync:`,
+                lipData.mode,
+                "| appliqué:",
+                lipData.lipsyncApplied
+              );
+            } else {
+              console.warn(
+                `[STEP4] Scène ${sc.number} — lip sync sans URL, fallback mux`,
+                lipData.error || ""
+              );
+            }
+          } catch (lipErr) {
             console.warn(
-              `[STEP4] Scène ${sc.number} — lip sync sans URL, fallback mux`,
-              lipData.error || ""
+              `[STEP4] Scène ${sc.number} — lip sync échoué, fallback mux`,
+              lipErr
             );
           }
-        } catch (lipErr) {
-          console.warn(
-            `[STEP4] Scène ${sc.number} — lip sync échoué, fallback mux`,
-            lipErr
-          );
         }
 
         // On garde la voix TTS comme piste audio : sur la vidéo synchronisée
@@ -634,7 +674,16 @@ export default function Step4Video({
   if (step === "idle") {
     return (
       <div style={{ textAlign: "center", padding: "40px 20px" }}>
-        <div style={{ fontSize: 48, marginBottom: 16 }}>🎬</div>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            color: "var(--accent-warm)",
+            marginBottom: 16,
+          }}
+        >
+          <IconClapperboard size={44} />
+        </div>
         <h2
           style={{
             fontSize: 20,
@@ -701,10 +750,10 @@ export default function Step4Video({
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    fontSize: 18,
+                    color: "var(--text3)",
                   }}
                 >
-                  🖼
+                  <IconLayers size={18} />
                 </div>
               )}
               <div
@@ -746,9 +795,12 @@ export default function Step4Video({
             fontWeight: 700,
             cursor: hasAllImages ? "pointer" : "not-allowed",
             fontFamily: "Inter, sans-serif",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 8,
           }}
         >
-          🎬 Générer la vidéo finale
+          <IconClapperboard size={18} /> Générer la vidéo finale
         </button>
 
         {showConfirm && (
@@ -775,7 +827,16 @@ export default function Step4Video({
                 textAlign: "center",
               }}
             >
-              <div style={{ fontSize: 48, marginBottom: 16 }}>🎬</div>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "center",
+                  color: "var(--accent-warm)",
+                  marginBottom: 16,
+                }}
+              >
+                <IconClapperboard size={44} />
+              </div>
               <h3
                 style={{
                   color: "#fff",
@@ -788,7 +849,7 @@ export default function Step4Video({
               </h3>
               <p style={{ color: "rgba(255,255,255,0.5)", marginBottom: 8 }}>
                 {nScenes} scène{nScenes > 1 ? "s" : ""} × {costPerScene} crédits
-                (vidéo + voix{isAppAd ? "" : " + lip sync"})
+                (vidéo + voix{isAppAd || isWojakStory ? "" : " + lip sync"})
               </p>
               <p
                 style={{
@@ -912,8 +973,19 @@ export default function Step4Video({
           />
         </div>
 
-        <div style={{ fontSize: 32, marginBottom: 12 }}>
-          {step === "animating" ? "✨" : "🎞️"}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            color: "var(--accent-warm)",
+            marginBottom: 12,
+          }}
+        >
+          {step === "animating" ? (
+            <IconSparkles size={30} />
+          ) : (
+            <IconFilm size={30} />
+          )}
         </div>
         <div
           style={{
@@ -943,7 +1015,7 @@ export default function Step4Video({
               fontSize: 14,
             }}
           >
-            ❌ {error}
+            {error}
           </div>
         )}
       </div>
@@ -953,7 +1025,16 @@ export default function Step4Video({
   if (step === "error") {
     return (
       <div style={{ textAlign: "center", padding: "40px 20px" }}>
-        <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            color: "#F87171",
+            marginBottom: 12,
+          }}
+        >
+          <IconAlertTriangle size={36} />
+        </div>
         <div
           style={{
             fontSize: 15,
@@ -976,7 +1057,7 @@ export default function Step4Video({
             fontSize: 14,
           }}
         >
-          ❌ {error}
+          {error}
         </div>
         <button
           type="button"
@@ -1008,8 +1089,17 @@ export default function Step4Video({
         padding: "20px 0",
       }}
     >
-      <div style={{ fontSize: 15, fontWeight: 700, color: "#22c55e" }}>
-        ✅ Ta pub est prête !
+      <div
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 8,
+          fontSize: 15,
+          fontWeight: 700,
+          color: "#22c55e",
+        }}
+      >
+        <IconCheckCircle size={18} /> Ta pub est prête !
       </div>
 
       <div
@@ -1036,13 +1126,21 @@ export default function Step4Video({
           color: saveError ? "#fca5a5" : savedOk ? "#86efac" : "var(--text2)",
         }}
       >
-        {saveError
-          ? `⚠️ Échec de l'enregistrement — ${saveError}`
-          : savedOk
-            ? "✓ Enregistrée automatiquement dans Mes pubs"
-            : saving
-              ? "💾 Enregistrement dans Mes pubs…"
-              : "💾 Enregistrement…"}
+        {saveError ? (
+          <>
+            <IconAlertTriangle size={14} /> Échec de l&apos;enregistrement —{" "}
+            {saveError}
+          </>
+        ) : savedOk ? (
+          <>
+            <IconCheckCircle size={14} /> Enregistrée automatiquement dans Mes
+            pubs
+          </>
+        ) : saving ? (
+          "Enregistrement dans Mes pubs…"
+        ) : (
+          "Enregistrement…"
+        )}
       </div>
 
       <div
@@ -1105,7 +1203,7 @@ export default function Step4Video({
             gap: 7,
           }}
         >
-          ↓ Télécharger MP4
+          <IconDownload size={16} /> Télécharger MP4
         </a>
 
         {!savedOk && (
@@ -1125,7 +1223,11 @@ export default function Step4Video({
               fontFamily: "Inter, sans-serif",
             }}
           >
-            {saving ? "..." : saveError ? "↻ Réessayer l'enregistrement" : "💾 Enregistrer maintenant"}
+            {saving
+              ? "..."
+              : saveError
+                ? "Réessayer l'enregistrement"
+                : "Enregistrer maintenant"}
           </button>
         )}
 
@@ -1148,9 +1250,12 @@ export default function Step4Video({
             fontSize: 13,
             cursor: "pointer",
             fontFamily: "Inter, sans-serif",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
           }}
         >
-          🔄 Régénérer
+          <IconRefresh size={15} /> Régénérer
         </button>
       </div>
     </div>

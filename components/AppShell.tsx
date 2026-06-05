@@ -6,20 +6,34 @@ import { usePathname, useRouter } from "next/navigation";
 import { PubMoiLogo } from "@/components/brand/PubMoiLogo";
 import { useCredits } from "@/hooks/useCredits";
 import { getSupabaseBrowser } from "@/lib/supabase";
+import { PLANS, type PlanId } from "@/lib/plans";
+import {
+  IconUser,
+  IconMenu,
+  IconX,
+  IconLogout,
+  IconBolt,
+} from "@/components/icons";
 
-const NAV = [
-  { href: "/dashboard", label: "Mes pubs" },
+const NAV: { href: string; label: string; accent?: boolean }[] = [
+  { href: "/dashboard", label: "Dashboard" },
   { href: "/create", label: "+ Créer", accent: true },
   { href: "/plans", label: "Plans" },
 ];
 
 const LOW_CREDITS_THRESHOLD = 6;
 
+function formatCredits(n: number) {
+  return n.toLocaleString("fr-FR");
+}
+
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const path = usePathname();
   const router = useRouter();
-  const { credits } = useCredits();
+  const { credits, plan, hasPlan } = useCredits();
   const lowCredits = credits !== null && credits < LOW_CREDITS_THRESHOLD;
+  const planConfig = plan ? PLANS[plan as PlanId] : null;
+  const planLabel = planConfig?.name ?? (hasPlan && plan ? plan : "Sans plan");
   const [menuOpen, setMenuOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
 
@@ -44,6 +58,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     setMenuOpen(false);
   }, [path]);
 
+  // Précharge les routes de navigation pour des clics instantanés.
+  useEffect(() => {
+    for (const item of NAV) router.prefetch(item.href);
+  }, [router]);
+
   const creditsPill = (
     <Link
       href="/plans"
@@ -51,37 +70,61 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       style={{
         display: "flex",
         alignItems: "center",
-        gap: 6,
+        gap: 10,
         textDecoration: "none",
         background: lowCredits
-          ? "rgba(232, 49, 58, 0.18)"
-          : "linear-gradient(135deg, #ff6fae 0%, #ff3d6e 50%, #e32b45 100%)",
+          ? "rgba(232, 49, 58, 0.1)"
+          : "rgba(255, 255, 255, 0.04)",
         border: lowCredits
-          ? "1px solid rgba(232, 49, 58, 0.6)"
-          : "1px solid rgba(255, 111, 174, 0.45)",
-        borderRadius: 99,
-        padding: "6px 14px",
-        fontSize: 12,
-        color: "#fff",
-        fontWeight: 700,
-        whiteSpace: "nowrap",
-        boxShadow: lowCredits ? "none" : "0 4px 16px rgba(255, 61, 110, 0.35)",
+          ? "1px solid rgba(232, 49, 58, 0.45)"
+          : "1px solid var(--border)",
+        borderRadius: 14,
+        padding: "5px 12px 5px 5px",
         cursor: "pointer",
+        transition: "border-color 0.15s, background 0.15s",
       }}
     >
-      <span
+      <div
         style={{
-          width: 6,
-          height: 6,
-          borderRadius: "50%",
-          background: "#fff",
-          boxShadow: "0 0 8px rgba(255,255,255,0.8)",
+          width: 32,
+          height: 32,
+          borderRadius: 10,
+          flexShrink: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: lowCredits
+            ? "rgba(232, 49, 58, 0.25)"
+            : "linear-gradient(135deg, #ff6fae 0%, #ff3d6e 50%, #e32b45 100%)",
+          color: "#fff",
+          boxShadow: lowCredits
+            ? "none"
+            : "0 4px 14px rgba(255, 61, 110, 0.3)",
         }}
-      />
-      {credits !== null ? `${credits} crédit${credits > 1 ? "s" : ""}` : "…"}
-      {lowCredits && (
-        <span style={{ fontWeight: 600, opacity: 0.85 }}>· Recharger</span>
-      )}
+      >
+        <IconBolt size={14} />
+      </div>
+      <div style={{ lineHeight: 1.25, minWidth: 0 }}>
+        <div
+          style={{
+            fontSize: 13,
+            fontWeight: 800,
+            color: "var(--text)",
+            letterSpacing: "-0.01em",
+          }}
+        >
+          {credits !== null ? formatCredits(credits) : "…"}
+        </div>
+        <div
+          style={{
+            fontSize: 10,
+            fontWeight: 500,
+            color: lowCredits ? "#ff8fa3" : "var(--text2)",
+          }}
+        >
+          {lowCredits ? "Recharger les crédits" : `${planLabel} · crédits`}
+        </div>
+      </div>
     </Link>
   );
 
@@ -100,12 +143,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       >
         <div
           style={{
-            maxWidth: 1100,
-            margin: "0 auto",
+            width: "100%",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            padding: "0 16px",
+            padding: "0 clamp(16px, 2.5vw, 40px)",
             height: 60,
             gap: 10,
           }}
@@ -123,6 +165,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 <Link
                   key={item.href}
                   href={item.href}
+                  prefetch
                   style={{ textDecoration: "none" }}
                 >
                   <div
@@ -134,7 +177,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                       borderRadius: 12,
                       fontSize: 13,
                       fontWeight: 600,
-                      transition: "all 0.15s",
+                      transition: "background 0.12s, color 0.12s, border-color 0.12s",
                       background: item.accent
                         ? active
                           ? "linear-gradient(135deg, var(--accent), var(--accent-cherry))"
@@ -177,12 +220,16 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               disabled={loggingOut}
               className="btn-sec"
               style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 7,
                 padding: "8px 14px",
                 fontSize: 12,
                 fontWeight: 600,
                 opacity: loggingOut ? 0.6 : 1,
               }}
             >
+              <IconLogout size={15} />
               {loggingOut ? "Déconnexion…" : "Se déconnecter"}
             </button>
             <Link
@@ -197,11 +244,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                fontSize: 15,
+                color: "var(--text2)",
                 textDecoration: "none",
               }}
             >
-              👤
+              <IconUser size={17} />
             </Link>
           </div>
 
@@ -231,7 +278,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 fontFamily: "inherit",
               }}
             >
-              {menuOpen ? "✕" : "☰"}
+              {menuOpen ? <IconX size={18} /> : <IconMenu size={18} />}
             </button>
           </div>
         </div>
@@ -257,6 +304,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 <Link
                   key={item.href}
                   href={item.href}
+                  prefetch
                   style={{ textDecoration: "none" }}
                 >
                   <div
@@ -287,16 +335,19 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             <Link href="/settings" style={{ textDecoration: "none" }}>
               <div
                 style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
                   padding: "13px 16px",
                   borderRadius: 12,
                   fontSize: 15,
                   fontWeight: 600,
-                  textAlign: "center",
                   background: "rgba(255,255,255,0.05)",
                   color: "var(--text2)",
                 }}
               >
-                👤 Mon compte
+                <IconUser size={17} /> Mon compte
               </div>
             </Link>
             <button
@@ -304,11 +355,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               onClick={() => void handleLogout()}
               disabled={loggingOut}
               style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
                 padding: "13px 16px",
                 borderRadius: 12,
                 fontSize: 15,
                 fontWeight: 600,
-                textAlign: "center",
                 background: "rgba(227, 43, 69, 0.12)",
                 color: "#ff8fa3",
                 border: "1px solid rgba(227, 43, 69, 0.35)",
@@ -317,6 +371,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 opacity: loggingOut ? 0.6 : 1,
               }}
             >
+              <IconLogout size={17} />
               {loggingOut ? "Déconnexion…" : "Se déconnecter"}
             </button>
           </div>

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useCredits } from "@/hooks/useCredits";
 import { PLANS } from "@/lib/plans";
+import { IconCheckCircle } from "@/components/icons";
 
 type Settings = {
   displayName: string;
@@ -111,6 +112,10 @@ export default function SettingsPage() {
             type="button"
             onClick={save}
             style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 7,
               width: "100%",
               borderRadius: 12,
               border: "none",
@@ -126,7 +131,13 @@ export default function SettingsPage() {
               transition: "background 0.2s",
             }}
           >
-            {saved ? "Enregistré ✓" : "Sauvegarder"}
+            {saved ? (
+              <>
+                <IconCheckCircle size={16} /> Enregistré
+              </>
+            ) : (
+              "Sauvegarder"
+            )}
           </button>
         </Card>
 

@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { PLANS } from "@/lib/plans";
 import { authFetch } from "@/lib/authFetch";
 import { getSupabaseBrowser } from "@/lib/supabase";
+import { IconLock, IconCheck, IconArrowRight } from "@/components/icons";
 
 export default function PlansPage() {
   return (
@@ -96,13 +97,17 @@ function PlansContent() {
         >
           <p
             style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
               color: "#E8313A",
               fontWeight: 700,
               fontSize: 16,
               margin: "0 0 4px",
             }}
           >
-            🔒 Abonnement requis
+            <IconLock size={17} /> Abonnement requis
           </p>
           <p
             style={{
@@ -227,7 +232,16 @@ function PlansContent() {
                     alignItems: "flex-start",
                   }}
                 >
-                  <span style={{ color: "#E8313A", flexShrink: 0 }}>✓</span>
+                  <span
+                    style={{
+                      color: "#E8313A",
+                      flexShrink: 0,
+                      display: "inline-flex",
+                      marginTop: 2,
+                    }}
+                  >
+                    <IconCheck size={15} />
+                  </span>
                   {f}
                 </li>
               ))}
@@ -238,6 +252,10 @@ function PlansContent() {
               onClick={() => handleSubscribe(plan.id)}
               disabled={loading === plan.id}
               style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
                 width: "100%",
                 padding: "14px 0",
                 background: plan.popular ? "#E8313A" : "rgba(255,255,255,0.08)",
@@ -251,9 +269,13 @@ function PlansContent() {
                 fontFamily: "inherit",
               }}
             >
-              {loading === plan.id
-                ? "Redirection..."
-                : `Commencer avec ${plan.name} →`}
+              {loading === plan.id ? (
+                "Redirection..."
+              ) : (
+                <>
+                  Commencer avec {plan.name} <IconArrowRight size={16} />
+                </>
+              )}
             </button>
           </div>
         ))}

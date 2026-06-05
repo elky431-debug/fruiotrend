@@ -5,11 +5,23 @@ import { LANDING_PREVIEW_IMAGES } from "@/lib/landingPreviews";
 const PREVIEW_CARDS = [
   {
     badge: "PRODUIT VIVANT",
-    ...LANDING_PREVIEW_IMAGES.produitVivant,
+    src: LANDING_PREVIEW_IMAGES.produitVivant.srcPortrait,
+    alt: LANDING_PREVIEW_IMAGES.produitVivant.alt,
   },
   {
     badge: "INFLUENCEUR",
-    ...LANDING_PREVIEW_IMAGES.influenceur,
+    src: LANDING_PREVIEW_IMAGES.influenceur.srcPortrait,
+    alt: LANDING_PREVIEW_IMAGES.influenceur.alt,
+  },
+  {
+    badge: "FRUIT DRAMA",
+    src: LANDING_PREVIEW_IMAGES.fruitDrama.srcPortrait,
+    alt: LANDING_PREVIEW_IMAGES.fruitDrama.alt,
+  },
+  {
+    badge: "WOJAK NPC",
+    src: LANDING_PREVIEW_IMAGES.wojakNpc.srcPortrait,
+    alt: LANDING_PREVIEW_IMAGES.wojakNpc.alt,
   },
 ];
 
@@ -68,17 +80,18 @@ export function HeroSection() {
         </div>
 
         <div className="landing-hero-phones scroll-x">
-          {PREVIEW_CARDS.map((card) => (
+          {PREVIEW_CARDS.map((card, i) => (
             <div key={card.src} className="landing-phone-card">
               <span className="landing-phone-badge">{card.badge}</span>
               <div className="landing-phone-frame">
                 <Image
                   src={card.src}
                   alt={card.alt}
-                  width={360}
-                  height={640}
-                  className="landing-media-img"
-                  priority={card.badge === "INFLUENCEUR"}
+                  fill
+                  quality={92}
+                  className="landing-media-img landing-phone-preview-img"
+                  sizes="(max-width: 640px) 140px, 180px"
+                  priority={i < 2}
                 />
               </div>
             </div>

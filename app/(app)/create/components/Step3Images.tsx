@@ -9,6 +9,7 @@ import {
   sceneImageFilename,
 } from "@/lib/downloadAsset";
 import type { AdScript, ProductInput } from "@/types/ad";
+import { IconDownload, IconArrowRight, IconEdit } from "@/components/icons";
 
 interface Props {
   product: ProductInput;
@@ -122,6 +123,7 @@ export default function Step3Images({
             script.productVisualDescription ||
             product.description ||
             product.name,
+          productName: product.name,
           productAnalysis,
           productImages: productImageRefs,
           packagingImage: product.packagingImage || null,
@@ -129,11 +131,20 @@ export default function Step3Images({
             product.influencerMode === "photo"
               ? product.influencerImage || null
               : null,
+          influencerTraits:
+            product.influencerMode === "photo"
+              ? product.influencerTraits || null
+              : null,
           influencerMode: product.influencerMode || "ai",
           influencerBackgroundMode: product.influencerBackgroundMode || "change",
           template: product.template,
           targetAudience: product.targetAudience,
           productType: product.productType || "product",
+          storyTheme: product.storyTheme,
+          storyMode: product.storyMode,
+          theme: product.storyTheme,
+          wojakCharacterId: product.wojakCharacterId,
+          wojak_profile: product.wojakCharacterId,
           regenerate: Boolean(images[id]),
         }),
       });
@@ -251,14 +262,14 @@ export default function Step3Images({
   const stepLabel: Record<GenStep, string> = {
     idle:
       scenes.length === 1
-        ? "🖼 Générer l'image"
-        : `🖼 Générer les ${scenes.length} visuels`,
-    analyzing: "🔍 Analyse du produit...",
+        ? "Générer l'image"
+        : `Générer les ${scenes.length} visuels`,
+    analyzing: "Analyse du produit…",
     scenes:
       scenes.length === 1
-        ? "⏳ PubMoi génère l'image..."
-        : "⏳ PubMoi génère les scènes...",
-    done: "✓ Visuels prêts",
+        ? "PubMoi génère l'image…"
+        : "PubMoi génère les scènes…",
+    done: "Visuels prêts",
   };
 
   return (
@@ -313,9 +324,14 @@ export default function Step3Images({
             onClick={() => void downloadAllImages()}
             disabled={globalLoading}
             className="btn-sec"
-            style={{ fontSize: 13 }}
+            style={{
+              fontSize: 13,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+            }}
           >
-            ↓ Télécharger tout
+            <IconDownload size={15} /> Télécharger tout
           </button>
         )}
 
@@ -332,9 +348,12 @@ export default function Step3Images({
               fontSize: 13,
               fontWeight: 700,
               cursor: "pointer",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
             }}
           >
-            Générer les vidéos →
+            Générer les vidéos <IconArrowRight size={15} />
           </button>
         )}
       </div>
@@ -401,9 +420,12 @@ export default function Step3Images({
                         fontSize: 11,
                         fontWeight: 600,
                         cursor: busy ? "not-allowed" : "pointer",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
                       }}
                     >
-                      ↓
+                      <IconDownload size={14} />
                     </button>
                   </>
                 ) : (
@@ -440,21 +462,26 @@ export default function Step3Images({
                     marginBottom: 8,
                   }}
                 >
-                  {scene.subtitle}
+                  {product.storyTheme === "wojak"
+                    ? scene.voiceover
+                    : scene.subtitle}
                 </div>
 
                 {error && (
                   <div
+                    title={error}
                     style={{
-                      fontSize: 12,
+                      fontSize: 11,
                       color: "#F87171",
                       padding: 8,
                       textAlign: "center",
                       marginBottom: 6,
-                      lineHeight: 1.4,
+                      lineHeight: 1.35,
+                      maxHeight: 72,
+                      overflow: "hidden",
                     }}
                   >
-                    ❌ {error}
+                    {error.length > 140 ? `${error.slice(0, 140)}…` : error}
                   </div>
                 )}
 
@@ -464,9 +491,24 @@ export default function Step3Images({
                     onClick={() => generateSingleImage(i, scene)}
                     disabled={busy || globalLoading}
                     className="btn-sec"
-                    style={{ flex: 1, fontSize: 11 }}
+                    style={{
+                      flex: 1,
+                      fontSize: 11,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 5,
+                    }}
                   >
-                    {busy ? "…" : imageUrl ? "🔄 Régénérer" : "Générer"}
+                    {busy ? (
+                      "…"
+                    ) : imageUrl ? (
+                      <>
+                        <IconEdit size={13} /> Régénérer
+                      </>
+                    ) : (
+                      "Générer"
+                    )}
                   </button>
                   {imageUrl && (
                     <button

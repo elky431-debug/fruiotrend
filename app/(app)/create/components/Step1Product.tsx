@@ -10,7 +10,23 @@ import {
   filterImageFiles,
   processProductImageFile,
 } from "@/lib/processProductImage";
-import type { AdTemplate, ProductInput } from "@/types/ad";
+import type { AdTemplate, InfluencerTraits, ProductInput } from "@/types/ad";
+import { fetchInfluencerTraitsFromUpload } from "../lib/analyzeInfluencerUpload";
+import {
+  IconCamera,
+  IconImage,
+  IconBox,
+  IconX,
+  IconCheck,
+  IconUser,
+  IconBot,
+  IconClapperboard,
+  IconPencil,
+  IconArrowLeft,
+  IconArrowRight,
+  IconSparkles,
+  IconRefresh,
+} from "@/components/icons";
 
 const AD_GOALS = [
   "Ventes directes",
@@ -23,6 +39,12 @@ const TEMPLATE_MEDIA: Record<string, string> = {
   living_product: "/landing/pubmoi-produit-vivant.png",
   influencer: "/landing/pubmoi-influenceur.png",
   product_demo: "/landing/pubmoi-demo-produit.png",
+};
+
+const TEMPLATE_ICON: Record<string, React.ReactNode> = {
+  living_product: <IconBox size={16} />,
+  influencer: <IconUser size={16} />,
+  product_demo: <IconCamera size={16} />,
 };
 
 function Reveal({
@@ -123,6 +145,9 @@ export default function Step1Product({
   const [influencerImage, setInfluencerImage] = useState<
     ProductInput["influencerImage"]
   >(initial?.influencerImage ?? null);
+  const [influencerTraits, setInfluencerTraits] = useState<
+    InfluencerTraits | null
+  >(initial?.influencerTraits ?? null);
   const [influencerBackgroundMode, setInfluencerBackgroundMode] = useState<
     "keep" | "change"
   >(initial?.influencerBackgroundMode ?? "change");
@@ -153,6 +178,7 @@ export default function Step1Product({
     setPackagingImage(initial.packagingImage ?? null);
     setInfluencerMode(initial.influencerMode ?? "ai");
     setInfluencerImage(initial.influencerImage ?? null);
+    setInfluencerTraits(initial.influencerTraits ?? null);
     setInfluencerBackgroundMode(initial.influencerBackgroundMode ?? "change");
   }, [initial]);
 
@@ -208,7 +234,7 @@ export default function Step1Product({
       setMimeTypes(newMimes);
       setPreviews(newPreviews);
       setUploadOk(
-        added === 1 ? "1 photo ajoutée ✓" : `${added} photos ajoutées ✓`
+        added === 1 ? "1 photo ajoutée" : `${added} photos ajoutées`
       );
     }
 
@@ -303,7 +329,24 @@ export default function Step1Product({
     try {
       const { base64, mimeType, previewUrl } =
         await processProductImageFile(file);
-      setInfluencerImage({ base64, mimeType, url: previewUrl });
+      const asset = { base64, mimeType, url: previewUrl };
+      setInfluencerImage(asset);
+      setInfluencerTraits(null);
+
+      const traits = await fetchInfluencerTraitsFromUpload(asset);
+      if (traits) {
+        setInfluencerTraits(traits);
+        console.log(
+          "[STEP1] Traits influenceur:",
+          traits.gender,
+          traits.hairColor,
+          traits.skinTone
+        );
+      } else {
+        setInfluencerError(
+          "Photo ajoutée, mais l'analyse des traits a échoué — réessaie une photo plus nette."
+        );
+      }
     } catch (err) {
       setInfluencerError(
         err instanceof Error ? err.message : "Impossible d'ajouter la photo."
@@ -335,6 +378,10 @@ export default function Step1Product({
     influencerImage:
       template === "influencer" && influencerMode === "photo"
         ? influencerImage ?? null
+        : null,
+    influencerTraits:
+      template === "influencer" && influencerMode === "photo"
+        ? influencerTraits ?? null
         : null,
     influencerBackgroundMode:
       template === "influencer" && influencerMode === "photo"
@@ -476,7 +523,14 @@ export default function Step1Product({
               pointerEvents: "none",
             }}
           >
-            <span style={{ fontSize: 26 }}>{uploading ? "⏳" : "📸"}</span>
+            <span
+              style={{
+                display: "inline-flex",
+                color: "var(--accent-warm)",
+              }}
+            >
+              {uploading ? <IconRefresh size={26} /> : <IconCamera size={26} />}
+            </span>
             <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>
               {uploading
                 ? "Import en cours…"
@@ -587,11 +641,13 @@ export default function Step1Product({
                     border: "none",
                     background: "#EF4444",
                     color: "#fff",
-                    fontSize: 9,
                     cursor: "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
                   }}
                 >
-                  ✕
+                  <IconX size={10} />
                 </button>
               </div>
             ))}
@@ -616,7 +672,9 @@ export default function Step1Product({
               marginBottom: 8,
             }}
           >
-            <span style={{ fontSize: 16 }}>📦</span>
+            <span style={{ display: "inline-flex", color: "var(--text2)" }}>
+              <IconBox size={16} />
+            </span>
             <span style={{ color: "var(--text)", fontSize: 14, fontWeight: 600 }}>
               Packaging{" "}
               <span style={{ color: "var(--text3)", fontWeight: 400 }}>
@@ -651,8 +709,16 @@ export default function Step1Product({
                 }}
               />
               <div>
-                <p style={{ color: "var(--text)", fontSize: 13 }}>
-                  Packaging ajouté ✅
+                <p
+                  style={{
+                    color: "var(--text)",
+                    fontSize: 13,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                >
+                  <IconCheck size={14} /> Packaging ajouté
                 </p>
                 <button
                   type="button"
@@ -768,8 +834,12 @@ export default function Step1Product({
                 <div className="tpl-card-media">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={TEMPLATE_MEDIA[t.id]} alt={t.name} />
-                  <span className="tpl-card-emoji">{t.emoji}</span>
-                  <span className="tpl-card-check">✓</span>
+                  <span className="tpl-card-emoji">
+                    {TEMPLATE_ICON[t.id] ?? null}
+                  </span>
+                  <span className="tpl-card-check">
+                    <IconCheck size={12} />
+                  </span>
                 </div>
                 <div className="tpl-card-body">
                   <div
@@ -830,9 +900,12 @@ export default function Step1Product({
                   fontWeight: 700,
                   color: "var(--accent-warm)",
                   marginBottom: 4,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
                 }}
               >
-                {selectedMeta.emoji} {selectedMeta.name}
+                {TEMPLATE_ICON[template] ?? null} {selectedMeta.name}
               </div>
               <div
                 style={{
@@ -872,9 +945,12 @@ export default function Step1Product({
                   fontSize: 14,
                   fontWeight: 600,
                   marginBottom: 4,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 7,
                 }}
               >
-                🧑‍🎤 Personnage influenceur
+                <IconUser size={15} /> Personnage influenceur
               </p>
               <p
                 style={{
@@ -889,14 +965,25 @@ export default function Step1Product({
               <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
                 {(
                   [
-                    { mode: "ai", label: "🤖 Généré par l'IA" },
-                    { mode: "photo", label: "📸 Envoyer une photo" },
+                    {
+                      mode: "ai",
+                      label: "Généré par l'IA",
+                      icon: <IconBot size={15} />,
+                    },
+                    {
+                      mode: "photo",
+                      label: "Envoyer une photo",
+                      icon: <IconCamera size={15} />,
+                    },
                   ] as const
                 ).map((opt) => (
                   <button
                     key={opt.mode}
                     type="button"
-                    onClick={() => setInfluencerMode(opt.mode)}
+                    onClick={() => {
+                      setInfluencerMode(opt.mode);
+                      if (opt.mode === "ai") setInfluencerTraits(null);
+                    }}
                     style={{
                       padding: "8px 16px",
                       borderRadius: 8,
@@ -910,9 +997,12 @@ export default function Step1Product({
                           ? "var(--accent)"
                           : "rgba(255,255,255,0.08)",
                       color: "#fff",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 6,
                     }}
                   >
-                    {opt.label}
+                    {opt.icon} {opt.label}
                   </button>
                 ))}
               </div>
@@ -935,15 +1025,26 @@ export default function Step1Product({
                       }}
                     />
                     <div>
-                      <p style={{ color: "var(--text)", fontSize: 13 }}>
-                        Photo ajoutée ✅
+                      <p
+                        style={{
+                          color: "var(--text)",
+                          fontSize: 13,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 6,
+                        }}
+                      >
+                        <IconCheck size={14} /> Photo ajoutée
                       </p>
                       <p style={{ color: "var(--text2)", fontSize: 12 }}>
                         L&apos;IA va la transformer en style Pixar
                       </p>
                       <button
                         type="button"
-                        onClick={() => setInfluencerImage(null)}
+                        onClick={() => {
+                          setInfluencerImage(null);
+                          setInfluencerTraits(null);
+                        }}
                         style={{
                           color: "#ff6666",
                           fontSize: 12,
@@ -971,7 +1072,16 @@ export default function Step1Product({
                         textAlign: "center",
                       }}
                     >
-                      <p style={{ fontSize: 24, marginBottom: 8 }}>👤</p>
+                      <p
+                        style={{
+                          display: "flex",
+                          justifyContent: "center",
+                          color: "var(--text3)",
+                          marginBottom: 8,
+                        }}
+                      >
+                        <IconUser size={24} />
+                      </p>
                       <p style={{ color: "var(--text2)", fontSize: 13 }}>
                         {influencerUploading
                           ? "Import en cours…"
@@ -1015,12 +1125,12 @@ export default function Step1Product({
                       [
                         {
                           mode: "keep" as const,
-                          label: "🖼 Garder le décor de la photo",
+                          label: "Garder le décor de la photo",
                           sub: "Même fond que ta photo",
                         },
                         {
                           mode: "change" as const,
-                          label: "🎬 Nouveau décor",
+                          label: "Nouveau décor",
                           sub: "Décor généré selon le produit",
                         },
                       ]
@@ -1187,7 +1297,7 @@ export default function Step1Product({
             ))}
           </div>
           <div style={{ fontSize: 11, color: "var(--text3)", marginTop: 6 }}>
-            → {nScenes} scène{nScenes > 1 ? "s" : ""} de ~
+            {nScenes} scène{nScenes > 1 ? "s" : ""} de ~
             {Math.round(duration / nScenes)}s chacune
           </div>
         </div>
@@ -1222,9 +1332,15 @@ export default function Step1Product({
             type="button"
             onClick={goPrevSub}
             className="btn-sec"
-            style={{ flex: 1, justifyContent: "center" }}
+            style={{
+              flex: 1,
+              justifyContent: "center",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+            }}
           >
-            ← Retour
+            <IconArrowLeft size={15} /> Retour
           </button>
         )}
         {subStep < SUB_STEPS.length - 1 && (
@@ -1237,9 +1353,12 @@ export default function Step1Product({
               flex: 2,
               justifyContent: "center",
               opacity: stepValid[subStep] ? 1 : 0.6,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
             }}
           >
-            Suivant →
+            Suivant <IconArrowRight size={15} />
           </button>
         )}
       </div>
@@ -1255,13 +1374,22 @@ export default function Step1Product({
           width: "100%",
           opacity: !canContinue || loading ? 0.6 : 1,
           animationDelay: "560ms",
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 8,
         }}
       >
-        {loading
-          ? "Génération du script…"
-          : canContinue
-            ? `✦ Générer la pub « ${selectedMeta.name} » avec l'IA →`
-            : "Photo + description requises"}
+        {loading ? (
+          "Génération du script…"
+        ) : canContinue ? (
+          <>
+            <IconSparkles size={16} /> Générer la pub « {selectedMeta.name} »
+            avec l&apos;IA <IconArrowRight size={15} />
+          </>
+        ) : (
+          "Photo + description requises"
+        )}
       </button>
 
       {onWriteOwnScript && (
@@ -1275,9 +1403,12 @@ export default function Step1Product({
             justifyContent: "center",
             opacity: !canContinue || loading ? 0.6 : 1,
             animationDelay: "620ms",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 7,
           }}
         >
-          ✍️ Écrire mon script moi-même
+          <IconPencil size={15} /> Écrire mon script moi-même
         </button>
       )}
       </>
@@ -1351,7 +1482,7 @@ function SubStepper({
                 transition: "all 0.15s",
               }}
             >
-              {done ? "✓" : i + 1}
+              {done ? <IconCheck size={13} /> : i + 1}
             </span>
             <span
               style={{

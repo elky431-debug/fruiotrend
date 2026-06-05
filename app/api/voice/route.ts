@@ -12,10 +12,14 @@ export async function POST(req: NextRequest) {
     const creditGuard = await requireCredits(req, "voice");
     if (creditGuard instanceof NextResponse) return creditGuard;
 
-    const { text, emotion, voiceName, narrativeRole, productType } =
+    const { text, emotion, voiceName, narrativeRole, productType, theme, storyTheme } =
       await req.json();
+
+    const isWojakNarrator = storyTheme === "wojak" || theme === "wojak";
+
     const preferElevenLabs =
-      productType === "app" || process.env.TTS_PREFER_ELEVENLABS === "true";
+      !isWojakNarrator &&
+      (productType === "app" || process.env.TTS_PREFER_ELEVENLABS === "true");
 
     if (!process.env.GROK_API_KEY && !process.env.FAL_API_KEY) {
       return NextResponse.json(
@@ -31,20 +35,32 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Texte manquant" }, { status: 400 });
     }
 
-    console.log("[VOICE] Voix reçue:", voiceName);
-    console.log("[VOICE] Texte:", String(text).trim().substring(0, 50));
+    const narratorVoice = isWojakNarrator ? voiceName || "rex" : voiceName;
+    const speechText = String(text)
+      .replace(/\[.*?\]/g, "")
+      .trim();
 
-    const { uiId, grokId, elevenId } = resolveTtsVoiceIds(voiceName);
+    if (isWojakNarrator) {
+      console.log("[VOICE] Mode narrateur Wojak — ton neutre, voix:", narratorVoice);
+      console.log("[VOICE] Texte:", speechText.substring(0, 80));
+    } else {
+      console.log("[VOICE] Voix reçue:", voiceName);
+      console.log("[VOICE] Texte:", speechText.substring(0, 50));
+    }
+
+    const { uiId, grokId, elevenId } = resolveTtsVoiceIds(narratorVoice);
     console.log("[VOICE] Voix finale — UI:", uiId, "| Grok:", grokId, "| Eleven:", elevenId);
 
     const result = await generateSpeechWithFallback(
-      String(text),
-      voiceName || uiId,
-      {
-        emotion,
-        narrativeRole,
-        preferElevenLabs,
-      }
+      speechText,
+      narratorVoice || uiId,
+      isWojakNarrator
+        ? { preferElevenLabs: false }
+        : {
+            emotion,
+            narrativeRole,
+            preferElevenLabs,
+          }
     );
 
     console.log(

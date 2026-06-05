@@ -9,6 +9,12 @@ import AppProductStep from "./AppProductStep";
 import Step2Script from "./Step2Script";
 import Step3Images from "./Step3Images";
 import Step4Video from "./Step4Video";
+import {
+  IconBox,
+  IconSmartphone,
+  IconArrowLeft,
+  IconCheck,
+} from "@/components/icons";
 
 type ProductMode = "product" | "app";
 
@@ -19,7 +25,17 @@ const TABS = [
   { num: 4 as const, label: "Vidéo", api: "PubMoi Video" },
 ];
 
-export default function CreatorLayout() {
+interface CreatorLayoutProps {
+  initialProductMode?: ProductMode;
+  onBack?: () => void;
+  hideProductModeToggle?: boolean;
+}
+
+export default function CreatorLayout({
+  initialProductMode = "product",
+  onBack,
+  hideProductModeToggle = false,
+}: CreatorLayoutProps = {}) {
   const [tab, setTab] = useState<1 | 2 | 3 | 4>(1);
   const [product, setProduct] = useState<ProductInput | null>(null);
   const [script, setScript] = useState<AdScript | null>(null);
@@ -29,7 +45,8 @@ export default function CreatorLayout() {
   const [scriptLoading, setScriptLoading] = useState(false);
   const [scriptError, setScriptError] = useState("");
   const [customMode, setCustomMode] = useState(false);
-  const [productMode, setProductMode] = useState<ProductMode>("product");
+  const [productMode, setProductMode] =
+    useState<ProductMode>(initialProductMode);
 
   const goTab = (n: 1 | 2 | 3 | 4) => {
     if (n === 2 && !product) return;
@@ -131,6 +148,26 @@ export default function CreatorLayout() {
 
   return (
     <div className="create-shell">
+      {onBack && tab === 1 && (
+        <button
+          type="button"
+          onClick={onBack}
+          style={{
+            background: "none",
+            border: "none",
+            color: "rgba(255,255,255,0.5)",
+            cursor: "pointer",
+            marginBottom: 16,
+            fontSize: 14,
+            padding: 0,
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+          }}
+        >
+          <IconArrowLeft size={15} /> Retour
+        </button>
+      )}
       <div className="create-head">
         <span className="create-eyebrow">
           <span className="dot" />
@@ -171,7 +208,7 @@ export default function CreatorLayout() {
                 }`}
               >
                 <span className="stepper-node-circle">
-                  {done && !active ? "✓" : t.num}
+                  {done && !active ? <IconCheck size={14} /> : t.num}
                 </span>
                 <span className="stepper-node-label">{t.label}</span>
                 {active && t.api ? (
@@ -219,6 +256,7 @@ export default function CreatorLayout() {
 
       {tab === 1 && (
         <>
+          {!hideProductModeToggle && (
           <div
             className="seg-toggle"
             role="tablist"
@@ -230,10 +268,18 @@ export default function CreatorLayout() {
               }`}
               aria-hidden
             />
-            {(
+            {            (
               [
-                { id: "product", label: "Produit", icon: "🛍" },
-                { id: "app", label: "Appli / Site", icon: "📱" },
+                {
+                  id: "product",
+                  label: "Produit",
+                  icon: <IconBox size={16} />,
+                },
+                {
+                  id: "app",
+                  label: "Appli / Site",
+                  icon: <IconSmartphone size={16} />,
+                },
               ] as const
             ).map((m) => {
               const active = productMode === m.id;
@@ -246,12 +292,15 @@ export default function CreatorLayout() {
                   onClick={() => setProductMode(m.id)}
                   className={`seg-btn${active ? " is-active" : ""}`}
                 >
-                  <span>{m.icon}</span>
+                  <span style={{ display: "inline-flex", alignItems: "center" }}>
+                    {m.icon}
+                  </span>
                   {m.label}
                 </button>
               );
             })}
           </div>
+          )}
 
           {productMode === "product" ? (
             <Step1Product

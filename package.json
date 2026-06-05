@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "crop-landing": "node scripts/crop-landing-portraits.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
@@ -19,6 +20,7 @@
     "openai": "^4.104.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "sharp": "^0.34.5",
     "stripe": "^17.7.0"
   },
   "devDependencies": {

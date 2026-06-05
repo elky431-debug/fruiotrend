@@ -52,7 +52,7 @@ export function Navbar() {
                 <span className="landing-nav-login-long">Mes pubs</span>
                 <span className="landing-nav-login-short">Mes pubs</span>
               </Link>
-              <Link href="/create" className="btn-primary landing-nav-cta">
+              <Link href="/dashboard" className="btn-primary landing-nav-cta">
                 Créer →
               </Link>
             </>
@@ -62,7 +62,7 @@ export function Navbar() {
                 <span className="landing-nav-login-long">Se connecter</span>
                 <span className="landing-nav-login-short">Connexion</span>
               </Link>
-              <Link href="/create" className="btn-primary landing-nav-cta">
+              <Link href="/dashboard" className="btn-primary landing-nav-cta">
                 Créer →
               </Link>
             </>

@@ -179,9 +179,14 @@
   align-items: center;
 }
 
+.landing-hero-grid > * {
+  min-width: 0;
+}
+
 @media (min-width: 1024px) {
   .landing-hero-grid {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+    gap: 2rem;
   }
 }
 
@@ -192,7 +197,8 @@
   gap: clamp(10px, 3vw, 14px);
   flex-wrap: nowrap;
   overflow-x: auto;
-  padding: 4px clamp(16px, 5vw, 0) 12px;
+  overflow-y: visible;
+  padding: 1.5rem clamp(16px, 5vw, 0) 16px;
   scroll-snap-type: x mandatory;
   -webkit-overflow-scrolling: touch;
 }
@@ -214,11 +220,12 @@
   }
 }
 
-.landing-phone-card:nth-child(2) {
+.landing-phone-card:nth-child(even) {
   margin-top: 2rem;
 }
 
 .landing-phone-frame {
+  position: relative;
   aspect-ratio: 9 / 16;
   overflow: hidden;
   border-radius: 1rem;
@@ -227,10 +234,19 @@
   background: #1a1612;
 }
 
+.landing-phone-frame > span {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.landing-phone-frame .landing-phone-preview-img,
 .landing-phone-frame img {
-  width: 100%;
-  height: 100%;
+  width: 100% !important;
+  height: 100% !important;
   object-fit: cover;
+  object-position: center center;
   display: block;
 }
 
@@ -875,7 +891,7 @@
   .landing-phone-card {
     animation: landing-float 6s ease-in-out infinite;
   }
-  .landing-phone-card:nth-child(2) {
+  .landing-phone-card:nth-child(even) {
     animation-delay: -3s;
   }
 }
@@ -1143,10 +1159,43 @@
   }
 }
 
-/* ---------- TÉLÉPHONES : perspective 3D + glow massif ---------- */
+/* ---------- TÉLÉPHONES : cartes statiques, badge + image toujours visibles ---------- */
 .landing-hero-phones {
-  perspective: 1400px;
-  overflow: visible;
+  perspective: none;
+  overflow-x: auto;
+  overflow-y: visible;
+}
+
+@media (min-width: 1024px) {
+  .landing-hero-phones {
+    width: 100%;
+    max-width: 100%;
+    justify-content: flex-end;
+    gap: 10px;
+    padding-left: 0;
+    padding-right: 0;
+    overflow-x: visible;
+  }
+
+  .landing-phone-card {
+    width: calc((100% - 30px) / 4);
+    max-width: 136px;
+    min-width: 0;
+  }
+
+  .landing-phone-card:nth-child(even) {
+    margin-top: 1.75rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  .landing-hero {
+    max-width: 80rem;
+  }
+
+  .landing-phone-card {
+    max-width: 148px;
+  }
 }
 
 .landing-hero-phones::before {
@@ -1156,31 +1205,31 @@
 
 .landing-phone-card {
   animation: none !important;
+  transform: translateY(0);
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.landing-phone-card:nth-child(1) {
-  transform: rotateY(18deg) rotateX(5deg);
-}
-
-.landing-phone-card:nth-child(2) {
-  transform: rotateY(-16deg) rotateX(5deg);
-  margin-top: 2.5rem;
-}
-
-.landing-hero-phones:hover .landing-phone-card {
-  transform: rotateY(0deg) rotateX(0deg) translateY(-8px) scale(1.02);
+@media (max-width: 1023px) {
+  .landing-phone-card:nth-child(even) {
+    margin-top: 2.5rem;
+  }
 }
 
 .landing-phone-frame {
-  border-width: 3px;
-  box-shadow: 0 18px 60px rgba(227, 43, 69, 0.4),
-    0 0 0 1px rgba(255, 92, 157, 0.25);
+  border-width: 2px;
+  box-shadow: 0 12px 40px rgba(227, 43, 69, 0.28);
+  transform: none !important;
+  transition: box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+/* Survol : la carte se soulève + halo rose, sans rien masquer */
+.landing-phone-card:hover {
+  transform: translateY(-8px);
 }
 
 .landing-phone-card:hover .landing-phone-frame {
-  transform: scale(1.06);
-  box-shadow: 0 24px 80px rgba(227, 43, 69, 0.6),
-    0 0 0 2px rgba(255, 92, 157, 0.8);
+  border-color: rgba(255, 92, 157, 0.75);
+  box-shadow: 0 18px 52px rgba(227, 43, 69, 0.42);
 }
 
 /* ---------- BOUTONS : dégradé mouvant + glow pulsé ---------- */
