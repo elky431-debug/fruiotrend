@@ -6,6 +6,7 @@ export const CREDIT_COSTS = {
   lipsync: 1,
   regenerate_image: 1,
   regenerate_video: 2,
+  creative: 1,
 } as const;
 
 export type CreditAction = keyof typeof CREDIT_COSTS;

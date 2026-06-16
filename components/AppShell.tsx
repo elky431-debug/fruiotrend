@@ -15,11 +15,13 @@ import {
   IconBolt,
 } from "@/components/icons";
 
-const NAV: { href: string; label: string; accent?: boolean }[] = [
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/create", label: "+ Créer", accent: true },
-  { href: "/plans", label: "Plans" },
-];
+const NAV: { href: string; label: string; accent?: boolean; badge?: string }[] =
+  [
+    { href: "/dashboard", label: "Dashboard" },
+    { href: "/create", label: "+ Créer", accent: true },
+    { href: "/creatives", label: "Creatives Pro", badge: "NEW" },
+    { href: "/plans", label: "Plans" },
+  ];
 
 const LOW_CREDITS_THRESHOLD = 6;
 
@@ -202,6 +204,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                     }}
                   >
                     {item.label}
+                    {item.badge && <NavBadge label={item.badge} />}
                   </div>
                 </Link>
               );
@@ -328,6 +331,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                     }}
                   >
                     {item.label}
+                    {item.badge && <NavBadge label={item.badge} />}
                   </div>
                 </Link>
               );
@@ -388,5 +392,26 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         {children}
       </main>
     </div>
+  );
+}
+
+function NavBadge({ label }: { label: string }) {
+  return (
+    <span
+      style={{
+        marginLeft: 6,
+        fontSize: 9,
+        fontWeight: 800,
+        letterSpacing: "0.04em",
+        lineHeight: 1,
+        padding: "3px 5px",
+        borderRadius: 5,
+        color: "#fff",
+        background: "linear-gradient(135deg, #ff6fae, #e32b45)",
+        boxShadow: "0 2px 8px rgba(227, 43, 69, 0.4)",
+      }}
+    >
+      {label}
+    </span>
   );
 }
