@@ -53,6 +53,32 @@ function useCreditsInternal(pollMs = 30000): CreditsState {
     };
   }, [load, pollMs]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get("session_id");
+    if (!sessionId) return;
+
+    void (async () => {
+      try {
+        await authFetch("/api/stripe/confirm", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sessionId }),
+        });
+      } catch {
+        // Le webhook reste le filet de sécurité.
+      } finally {
+        params.delete("session_id");
+        params.delete("checkout");
+        const clean =
+          window.location.pathname +
+          (params.toString() ? `?${params.toString()}` : "");
+        window.history.replaceState({}, "", clean);
+        window.dispatchEvent(new Event("credits-updated"));
+      }
+    })();
+  }, []);
+
   return { credits, plan, hasPlan, loading, refresh: load };
 }
 

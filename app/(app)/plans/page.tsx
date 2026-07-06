@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { PLANS } from "@/lib/plans";
 import { authFetch } from "@/lib/authFetch";
 import { getSupabaseBrowser } from "@/lib/supabase";
-import { IconLock, IconCheck, IconArrowRight } from "@/components/icons";
+import { IconCheck, IconArrowRight } from "@/components/icons";
 
 export default function PlansPage() {
   return (
@@ -17,7 +17,6 @@ export default function PlansPage() {
 
 function PlansContent() {
   const params = useSearchParams();
-  const isPaywall = params.get("paywall") === "true";
   const [loading, setLoading] = useState<string | null>(null);
   const autoTriggered = useRef(false);
 
@@ -84,43 +83,6 @@ function PlansContent() {
 
   return (
     <div style={{ maxWidth: 960, margin: "0 auto", padding: "60px 20px" }}>
-      {isPaywall && (
-        <div
-          style={{
-            background: "rgba(232,49,58,0.1)",
-            border: "1px solid rgba(232,49,58,0.3)",
-            borderRadius: 16,
-            padding: "16px 24px",
-            textAlign: "center",
-            marginBottom: 40,
-          }}
-        >
-          <p
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 8,
-              color: "#E8313A",
-              fontWeight: 700,
-              fontSize: 16,
-              margin: "0 0 4px",
-            }}
-          >
-            <IconLock size={17} /> Abonnement requis
-          </p>
-          <p
-            style={{
-              color: "rgba(255,255,255,0.6)",
-              fontSize: 14,
-              margin: 0,
-            }}
-          >
-            Choisissez un plan pour accéder à la création de pubs IA
-          </p>
-        </div>
-      )}
-
       <h1
         style={{
           textAlign: "center",

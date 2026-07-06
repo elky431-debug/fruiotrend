@@ -19,7 +19,8 @@ const NAV: { href: string; label: string; accent?: boolean; badge?: string }[] =
   [
     { href: "/dashboard", label: "Dashboard" },
     { href: "/create", label: "+ Créer", accent: true },
-    { href: "/creatives", label: "Creatives Pro", badge: "NEW" },
+    { href: "/animate", label: "Animer", badge: "NEW" },
+    { href: "/creatives", label: "Creatives Pro" },
     { href: "/plans", label: "Plans" },
   ];
 
