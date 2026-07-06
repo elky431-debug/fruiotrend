@@ -26,7 +26,13 @@ export async function POST(req: NextRequest) {
       mimeType?: string;
       themeId?: string;
       durationSeconds?: number;
+      userPrompt?: string;
     };
+
+    const userPrompt =
+      typeof body.userPrompt === "string"
+        ? body.userPrompt.slice(0, 500)
+        : undefined;
 
     const theme = getAnimateTheme(body.themeId || "");
     if (!theme) {
@@ -49,11 +55,12 @@ export async function POST(req: NextRequest) {
       body.imageBase64 ||
       (body.imageUrl?.includes(",") ? body.imageUrl.split(",")[1] : "");
 
-    // Analyse l'image pour un mouvement logique (best-effort).
+    // Analyse l'image pour un mouvement logique, guidé par la demande utilisateur.
     const subjectMotion = await planImageMotion(
       rawBase64,
       body.mimeType || "image/jpeg",
-      theme
+      theme,
+      userPrompt
     );
 
     const finalImageUrl = await resolveFalImageUrl(
@@ -63,7 +70,7 @@ export async function POST(req: NextRequest) {
     );
 
     const prompt = appendAntiGhostPrompt(
-      buildAnimatePrompt(theme, subjectMotion)
+      buildAnimatePrompt(theme, subjectMotion, userPrompt)
     );
 
     const falRes = await fetch(VIDEO_QUEUE, {

@@ -68,6 +68,7 @@ async function animateOne(
   clip: Clip,
   themeId: string,
   durationSeconds: number,
+  userPrompt: string,
   onProgress: (pct: number) => void
 ): Promise<string> {
   const imageBase64 = clip.dataUrl.includes(",")
@@ -83,6 +84,7 @@ async function animateOne(
       mimeType: "image/jpeg",
       themeId,
       durationSeconds,
+      userPrompt,
     }),
   });
 
@@ -151,6 +153,7 @@ export default function AnimatePage() {
   const [clips, setClips] = useState<Clip[]>([]);
   const [themeId, setThemeId] = useState<AnimateTheme["id"]>(THEMES[0].id);
   const [duration, setDuration] = useState<number>(6);
+  const [prompt, setPrompt] = useState("");
   const [running, setRunning] = useState(false);
   const [assembling, setAssembling] = useState(false);
   const [finalVideo, setFinalVideo] = useState<string | null>(null);
@@ -205,6 +208,37 @@ export default function AnimatePage() {
     );
   }, []);
 
+  const assemble = useCallback(async (urls: string[]) => {
+    if (urls.length === 0) return;
+    // Un seul clip réussi : c'est déjà la vidéo finale.
+    if (urls.length === 1) {
+      setFinalVideo(urls[0]);
+      return;
+    }
+    setAssembling(true);
+    setGlobalError(null);
+    try {
+      const res = await authFetch("/api/video/concat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clipUrls: urls }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.error || !data.videoUrl) {
+        throw new Error(data.error || "Assemblage échoué");
+      }
+      setFinalVideo(data.videoUrl);
+    } catch (err) {
+      setGlobalError(
+        err instanceof Error
+          ? err.message
+          : "Assemblage de la vidéo finale échoué"
+      );
+    } finally {
+      setAssembling(false);
+    }
+  }, []);
+
   const handleGenerate = useCallback(async () => {
     if (!clips.length || running) return;
     setRunning(true);
@@ -222,6 +256,7 @@ export default function AnimatePage() {
     );
 
     const snapshot = clips.map((c) => ({ ...c }));
+    const results = new Map<string, string>();
     let creditsExhausted = false;
 
     await runPool(snapshot, 2, async (clip) => {
@@ -231,9 +266,14 @@ export default function AnimatePage() {
       }
       updateClip(clip.id, { status: "generating", progress: 5 });
       try {
-        const videoUrl = await animateOne(clip, themeId, duration, (pct) =>
-          updateClip(clip.id, { progress: pct })
+        const videoUrl = await animateOne(
+          clip,
+          themeId,
+          duration,
+          prompt,
+          (pct) => updateClip(clip.id, { progress: pct })
         );
+        results.set(clip.id, videoUrl);
         updateClip(clip.id, { status: "done", progress: 100, videoUrl });
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Erreur";
@@ -243,30 +283,22 @@ export default function AnimatePage() {
     });
 
     setRunning(false);
-  }, [clips, running, themeId, duration, updateClip]);
 
-  const handleAssemble = useCallback(async () => {
-    const urls = doneClips.map((c) => c.videoUrl!).filter(Boolean);
-    if (urls.length < 2 || assembling) return;
-    setAssembling(true);
-    setGlobalError(null);
-    try {
-      const res = await authFetch("/api/video/concat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clipUrls: urls }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || data.error || !data.videoUrl) {
-        throw new Error(data.error || "Assemblage échoué");
-      }
-      setFinalVideo(data.videoUrl);
-    } catch (err) {
-      setGlobalError(err instanceof Error ? err.message : "Assemblage échoué");
-    } finally {
-      setAssembling(false);
+    // Assemblage automatique en une seule vidéo (ordre d'upload conservé).
+    const orderedUrls = snapshot
+      .map((c) => results.get(c.id))
+      .filter((u): u is string => Boolean(u));
+    if (orderedUrls.length > 0) {
+      await assemble(orderedUrls);
     }
-  }, [doneClips, assembling]);
+  }, [clips, running, themeId, duration, prompt, updateClip, assemble]);
+
+  const handleAssembleManual = useCallback(() => {
+    const urls = clips
+      .filter((c) => c.status === "done" && c.videoUrl)
+      .map((c) => c.videoUrl as string);
+    void assemble(urls);
+  }, [clips, assemble]);
 
   const activeTheme = useMemo(
     () => THEMES.find((t) => t.id === themeId) ?? THEMES[0],
@@ -304,9 +336,9 @@ export default function AnimatePage() {
           Anime tes images
         </h1>
         <p style={{ color: "var(--text2)", fontSize: 15, margin: 0, maxWidth: 620 }}>
-          Dépose jusqu&apos;à {MAX_IMAGES} images. L&apos;IA les analyse et les
-          anime automatiquement de façon logique, selon le thème choisi. Assemble
-          ensuite le tout en une seule vidéo.
+          Dépose jusqu&apos;à {MAX_IMAGES} images, décris ce que tu veux, choisis
+          un thème. L&apos;IA analyse et anime chaque image de façon logique, puis
+          assemble automatiquement le tout en une seule vidéo.
         </p>
       </header>
 
@@ -374,8 +406,35 @@ export default function AnimatePage() {
         )}
       </Section>
 
-      {/* Étape 2 — Thème */}
-      <Section step={2} title="Thème d'animation">
+      {/* Étape 2 — Prompt */}
+      <Section step={2} title="Ta demande" hint="optionnel">
+        <textarea
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          placeholder="Décris précisément ce que tu veux : ambiance, mouvement, action… Ex. « zoom lent sur l'écran, ambiance premium, la lumière balaye le produit ». Appliqué à toutes les images."
+          rows={3}
+          maxLength={500}
+          style={{
+            width: "100%",
+            resize: "vertical",
+            padding: "14px 16px",
+            borderRadius: 14,
+            background: "var(--bg3, rgba(255,255,255,0.04))",
+            border: "1px solid var(--border)",
+            color: "var(--text)",
+            fontSize: 14,
+            fontFamily: "inherit",
+            lineHeight: 1.5,
+            outline: "none",
+          }}
+        />
+        <div style={{ marginTop: 6, fontSize: 12, color: "var(--text2)", textAlign: "right" }}>
+          {prompt.length}/500
+        </div>
+      </Section>
+
+      {/* Étape 3 — Thème */}
+      <Section step={3} title="Thème d'animation">
         <div
           style={{
             display: "grid",
@@ -414,8 +473,8 @@ export default function AnimatePage() {
         </div>
       </Section>
 
-      {/* Étape 3 — Durée */}
-      <Section step={3} title="Durée par clip">
+      {/* Étape 4 — Durée */}
+      <Section step={4} title="Durée par image">
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           {DURATIONS.map((d) => {
             const active = d === duration;
@@ -516,14 +575,83 @@ export default function AnimatePage() {
         </button>
       </div>
 
-      {/* Assemblage + résultat */}
+      {/* Résultat — vidéo unique */}
       {allSettled && doneClips.length > 0 && (
-        <Section step={4} title="Résultat">
-          {doneClips.length > 1 && (
+        <Section step={5} title="Ta vidéo">
+          {assembling && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                padding: "16px 18px",
+                borderRadius: 14,
+                background: "var(--bg3, rgba(255,255,255,0.04))",
+                border: "1px solid var(--border)",
+                color: "var(--text2)",
+                fontSize: 14,
+                marginBottom: 20,
+              }}
+            >
+              <span
+                style={{
+                  width: 18,
+                  height: 18,
+                  border: "2px solid rgba(232,49,58,0.3)",
+                  borderTopColor: "#E8313A",
+                  borderRadius: "50%",
+                  animation: "spin 1s linear infinite",
+                }}
+              />
+              Assemblage de ta vidéo finale…
+              <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+            </div>
+          )}
+
+          {finalVideo && (
+            <div style={{ marginBottom: 28 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#7ee787", fontSize: 13, fontWeight: 700, marginBottom: 10 }}>
+                <IconCheckCircle size={15} />
+                {doneClips.length > 1
+                  ? `Vidéo finale (${doneClips.length} images assemblées)`
+                  : "Vidéo finale"}
+              </div>
+              <video
+                src={finalVideo}
+                controls
+                autoPlay
+                loop
+                playsInline
+                style={{ width: "100%", maxWidth: 320, borderRadius: 18, border: "1px solid var(--border)" }}
+              />
+              <div style={{ marginTop: 12 }}>
+                <a
+                  href={finalVideo}
+                  download="pubmoi-animation.mp4"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 7,
+                    padding: "12px 22px",
+                    borderRadius: 12,
+                    textDecoration: "none",
+                    background: "linear-gradient(135deg, var(--accent, #E8313A), var(--accent-cherry, #e32b45))",
+                    color: "#fff",
+                    fontSize: 14,
+                    fontWeight: 800,
+                    boxShadow: "0 6px 22px rgba(227,43,69,0.35)",
+                  }}
+                >
+                  <IconDownload size={15} /> Télécharger la vidéo
+                </a>
+              </div>
+            </div>
+          )}
+
+          {!finalVideo && !assembling && doneClips.length > 1 && (
             <button
               type="button"
-              onClick={() => void handleAssemble()}
-              disabled={assembling}
+              onClick={handleAssembleManual}
               style={{
                 display: "inline-flex",
                 alignItems: "center",
@@ -533,89 +661,60 @@ export default function AnimatePage() {
                 border: "1px solid var(--border2, rgba(255,255,255,0.16))",
                 background: "var(--bg3, rgba(255,255,255,0.05))",
                 color: "var(--text)",
-                cursor: assembling ? "wait" : "pointer",
+                cursor: "pointer",
                 fontFamily: "inherit",
                 fontSize: 14,
                 fontWeight: 700,
                 marginBottom: 20,
-                opacity: assembling ? 0.7 : 1,
               }}
             >
-              <IconLayers size={16} />
-              {assembling
-                ? "Assemblage…"
-                : `Assembler les ${doneClips.length} clips en une vidéo`}
+              <IconLayers size={16} /> Réessayer l&apos;assemblage
             </button>
           )}
 
-          {finalVideo && (
-            <div style={{ marginBottom: 24 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#7ee787", fontSize: 13, fontWeight: 700, marginBottom: 10 }}>
-                <IconCheckCircle size={15} /> Vidéo finale assemblée
+          {/* Clips individuels (secondaire) */}
+          {doneClips.length > 1 && (
+            <details style={{ marginTop: 4 }}>
+              <summary style={{ cursor: "pointer", fontSize: 13, color: "var(--text2)", fontWeight: 600, marginBottom: 12 }}>
+                Voir les clips individuels ({doneClips.length})
+              </summary>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))",
+                  gap: 14,
+                  marginTop: 12,
+                }}
+              >
+                {doneClips.map((clip, i) => (
+                  <div key={clip.id}>
+                    <video
+                      src={clip.videoUrl}
+                      controls
+                      playsInline
+                      style={{ width: "100%", borderRadius: 12, border: "1px solid var(--border)" }}
+                    />
+                    <a
+                      href={clip.videoUrl}
+                      download={`clip-${i + 1}.mp4`}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 6,
+                        marginTop: 8,
+                        fontSize: 12.5,
+                        color: "var(--text2)",
+                        textDecoration: "none",
+                        fontWeight: 600,
+                      }}
+                    >
+                      <IconDownload size={13} /> Clip {i + 1}
+                    </a>
+                  </div>
+                ))}
               </div>
-              <video
-                src={finalVideo}
-                controls
-                playsInline
-                style={{ width: "100%", maxWidth: 300, borderRadius: 16, border: "1px solid var(--border)" }}
-              />
-              <div style={{ marginTop: 10 }}>
-                <a
-                  href={finalVideo}
-                  download="pubmoi-animation.mp4"
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 7,
-                    padding: "10px 18px",
-                    borderRadius: 12,
-                    textDecoration: "none",
-                    background: "linear-gradient(135deg, var(--accent, #E8313A), var(--accent-cherry, #e32b45))",
-                    color: "#fff",
-                    fontSize: 14,
-                    fontWeight: 700,
-                  }}
-                >
-                  <IconDownload size={15} /> Télécharger la vidéo
-                </a>
-              </div>
-            </div>
+            </details>
           )}
-
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
-              gap: 14,
-            }}
-          >
-            {doneClips.map((clip, i) => (
-              <div key={clip.id}>
-                <video
-                  src={clip.videoUrl}
-                  controls
-                  playsInline
-                  style={{ width: "100%", borderRadius: 14, border: "1px solid var(--border)" }}
-                />
-                <a
-                  href={clip.videoUrl}
-                  download={`clip-${i + 1}.mp4`}
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 6,
-                    marginTop: 8,
-                    fontSize: 12.5,
-                    color: "var(--text2)",
-                    textDecoration: "none",
-                    fontWeight: 600,
-                  }}
-                >
-                  <IconDownload size={13} /> Clip {i + 1}
-                </a>
-              </div>
-            ))}
-          </div>
         </Section>
       )}
     </div>

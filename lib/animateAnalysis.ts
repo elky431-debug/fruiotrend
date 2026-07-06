@@ -13,20 +13,27 @@ import type { AnimateTheme } from "@/lib/animateThemes";
 export async function planImageMotion(
   imageBase64: string,
   mimeType: string,
-  theme: AnimateTheme
+  theme: AnimateTheme,
+  userPrompt?: string
 ): Promise<string> {
-  const fallback = theme.motionHint;
+  const request = userPrompt?.trim();
+  const fallback = request || theme.motionHint;
 
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey || !imageBase64) return fallback;
 
+  const userBlock = request
+    ? `\n\nUSER REQUEST (highest priority — the animation MUST reflect this): "${request}"`
+    : "";
+
   const instruction = `You are a motion director for short vertical (9:16) product/lifestyle video ads.
 
-Look at this image and design the MOST LOGICAL, natural short animation for it, in the style: "${theme.name}" — ${theme.style}
+Look at this image and design the MOST LOGICAL, natural short animation for it, in the style: "${theme.name}" — ${theme.style}${userBlock}
 
 Rules:
 - Describe ONLY realistic in-place motion that fits what is actually in the image (a bottle can rotate and catch light, a person can breathe/blink/smile, a phone UI can scroll/parallax, food can steam).
 - The subject must stay exactly as-is — never invent new objects or change its shape.
+- If a user request is provided above, honor it precisely while keeping the motion realistic.
 - Keep it to 1-2 concise sentences of concrete camera + subject motion + lighting.
 - English only. No preamble, output just the motion description.
 

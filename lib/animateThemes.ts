@@ -108,10 +108,15 @@ INTEGRITY RULES:
  */
 export function buildAnimatePrompt(
   theme: AnimateTheme,
-  subjectMotion: string
+  subjectMotion: string,
+  userPrompt?: string
 ): string {
   const motion =
     subjectMotion?.trim() ||
     "the subject animated with subtle, natural, in-place motion";
-  return `${theme.style}\n\nSCENE: ${motion}${INTEGRITY_RULES}`;
+  const request = userPrompt?.trim();
+  const userDirective = request
+    ? `\n\nUSER REQUEST (highest priority, follow this exactly): ${request}`
+    : "";
+  return `${theme.style}\n\nSCENE: ${motion}${userDirective}${INTEGRITY_RULES}`;
 }
